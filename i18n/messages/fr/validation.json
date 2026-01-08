@@ -1,0 +1,12 @@
+{
+  "required": "Ce champ est obligatoire.",
+  "emailInvalid": "Veuillez entrer une adresse e-mail valide.",
+  "minLength": "La longueur minimale est de {min} caractères.",
+  "maxLength": "La longueur maximale est de {max} caractères.",
+  "passwordMismatch": "Les mots de passe ne correspondent pas.",
+  "numberInvalid": "Veuillez entrer un nombre valide.",
+  "dateInvalid": "Veuillez entrer une date valide.",
+  "urlInvalid": "Veuillez entrer une URL valide.",
+  "tooYoung": "Vous devez avoir au moins {age} ans.",
+  "tooOld": "Vous ne pouvez pas avoir plus de {age} ans."
+}
