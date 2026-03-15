@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 import { IUser } from '@/features/auth/types/user.type';
 import { ApiError } from '@/lib/api-error';
+import { toast } from 'sonner';
 
 export function createAuth(
   strategies: Record<string, AuthStrategy>,
@@ -17,9 +18,13 @@ export function createAuth(
       queryKey: userKey,
       queryFn: async () => {
         try {
-          return  await strategy.getUser();
+          return await strategy.getUser();
         } catch (error) {
-          if (error instanceof ApiError && error.status === 401 && strategy.refresh) {
+          if (
+            error instanceof ApiError &&
+            error.status === 401 &&
+            strategy.refresh
+          ) {
             const newUser = await strategy.refresh(); // refresh token -> nouveau JWT
             queryClient.setQueryData(['authenticated-user'], newUser);
             return newUser; // retry getUser
@@ -42,6 +47,14 @@ export function createAuth(
       mutationFn: strategy.login,
       onSuccess: (data) => {
         setUser(data);
+      },
+      onError: (error) => {
+        toast.success(
+          error instanceof ApiError
+            ? error.message
+            : 'An error occurred during login.'
+        );
+        console.error('Login error:', error);
       },
     });
   };

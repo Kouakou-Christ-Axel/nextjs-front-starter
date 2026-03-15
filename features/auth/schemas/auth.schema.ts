@@ -13,6 +13,12 @@ export type LoginSchemaType = z.infer<typeof loginSchema>;
 
 export const registerSchema = loginSchema
   .extend({
+    firstName: z.string().min(2, {
+      message: 'firstNameMinLength',
+    }),
+    lastName: z.string().min(2, {
+      message: 'lastNameMinLength',
+    }),
     confirmPassword: z.string().min(8, {
       message: 'passwordMinLength',
     }),

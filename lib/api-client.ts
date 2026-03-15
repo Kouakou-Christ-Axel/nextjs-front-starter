@@ -78,37 +78,50 @@ async function fetchApi<T>(
     params
   );
 
-  const response = await fetch(fullUrl, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      ...headers,
-      ...(cookieHeader ? { Cookie: cookieHeader } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-    credentials: 'include',
-    cache,
-    next,
-  });
-
-  let responseBody: ApiResponse<T> | null;
-
   try {
-    responseBody = await response.json();
-  } catch {
-    responseBody = null;
-  }
+    console.log(`Making ${method} request to: ${fullUrl}`);
+    const response = await fetch(fullUrl, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...headers,
+        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      credentials: 'include',
+      cache,
+      next,
+    });
 
-  if (!response.ok) {
+    let responseBody: ApiResponse<T> | null;
+
+    try {
+      responseBody = await response.json();
+    } catch {
+      responseBody = null;
+    }
+
+    if (!response.ok) {
+      throw new ApiError<T>(
+        response.status,
+        responseBody?.message || response.statusText,
+        responseBody ?? undefined
+      );
+    }
+
+    return responseBody as ApiResponse<T>;
+  } catch (error) {
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    console.log(error);
     throw new ApiError<T>(
-      response.status,
-      responseBody?.message || response.statusText,
-      responseBody ?? undefined
+      500,
+      (error as Error).message || 'An unknown error occurred',
+      undefined
     );
   }
-
-  return responseBody as ApiResponse<T>;
 }
 
 /*

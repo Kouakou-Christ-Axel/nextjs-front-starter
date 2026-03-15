@@ -6,6 +6,8 @@ import React from 'react';
 import { siteConfig } from '@/config/site-config';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { NuqsAdapter } from 'nuqs/adapters/next';
+import ReactQueryProvider from '@/components/providers/react-query-provider';
+import { Toaster } from 'sonner';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -43,6 +45,7 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen w-screen antialiased`}
       >
+        <ReactQueryProvider>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
@@ -50,9 +53,13 @@ export default async function RootLayout({
             disableTransitionOnChange
           >
             <NuqsAdapter>
-              <NextIntlClientProvider>{children}</NextIntlClientProvider>
+              <NextIntlClientProvider>
+                {children}
+                <Toaster />
+              </NextIntlClientProvider>
             </NuqsAdapter>
           </ThemeProvider>
+        </ReactQueryProvider>
       </body>
     </html>
   );

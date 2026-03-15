@@ -18,13 +18,13 @@ export function logoutUserRequest() {
 }
 
 export async function getUserRequest() {
-  return  await api.get<IUser>('/auth/me', {
+  return await api.get<IUser>('/auth/me', {
     cache: 'no-store',
   });
 }
 
 export async function getRefreshUserRequest() {
-  return  await api.get<IUser>('/auth/refresh', {
+  return await api.get<IUser>('/auth/refresh', {
     cache: 'no-store',
   });
 }

@@ -1,6 +1,6 @@
 {
-  "getStarted": "Pour commencer, modifiez le fichier page.tsx.",
-  "learnMore": "Vous cherchez un point de départ ou plus d'instructions ? Rendez-vous dans la section Modèles ou dans le Centre d'apprentissage.",
-  "deployNow": "Déployez maintenant",
-  "viewDocs": "Documentation"
+  "welcomeMessage": "Bienvenue dans notre application",
+  "description": "Voici la page d'accueil de notre formidable application. Découvrez ses fonctionnalités et profitez de votre visite !",
+  "login": "Se connecter",
+  "register": "Rejoindre maintenant"
 }
