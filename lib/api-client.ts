@@ -1,18 +1,7 @@
+import { AUTH_COOKIE_NAMES } from '@/config/auth';
 import { env } from '@/config/env';
 import { ApiError } from '@/lib/api-error';
 import { ApiResponse } from '@/types/api';
-
-// Whitelist of cookies forwarded to the backend. Must match cookies set by the backend auth layer.
-const AUTH_COOKIE_NAMES = new Set([
-  'access_token',
-  'refresh_token',
-  'jwt',
-  'session',
-  'csrf-token',
-  '__Host-access_token',
-  '__Host-refresh_token',
-  '__Host-psifi.x-csrf-token',
-]);
 
 type RequestBody = Record<string, unknown>;
 
