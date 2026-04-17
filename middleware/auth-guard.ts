@@ -40,5 +40,6 @@ export function buildLoginRedirectUrl(
   const url = new URL(reqUrl);
   url.pathname = `/${locale}/login`;
   url.search = '';
+  url.searchParams.set('returnTo', pathname);
   return url;
 }

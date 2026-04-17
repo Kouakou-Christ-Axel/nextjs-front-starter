@@ -89,10 +89,23 @@ describe('buildLoginRedirectUrl', () => {
     expect(url.pathname).toBe('/fr/login');
   });
 
-  it('strips query parameters from the redirect url', () => {
+  it('strips query parameters from the redirect url and adds returnTo', () => {
     const req = new URL('https://example.com/fr/dashboard?token=secret');
     const url = buildLoginRedirectUrl(req, '/fr/dashboard', locales, 'en');
-    expect(url.search).toBe('');
+    expect(url.searchParams.get('token')).toBeNull();
+    expect(url.searchParams.get('returnTo')).toBe('/fr/dashboard');
+  });
+
+  it('adds returnTo param with the protected pathname', () => {
+    const req = new URL('https://example.com/fr/dashboard/settings');
+    const url = buildLoginRedirectUrl(
+      req,
+      '/fr/dashboard/settings',
+      locales,
+      'en'
+    );
+    expect(url.pathname).toBe('/fr/login');
+    expect(url.searchParams.get('returnTo')).toBe('/fr/dashboard/settings');
   });
 
   it('preserves the host and protocol of the request', () => {

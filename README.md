@@ -274,29 +274,39 @@ Les cookies sont envoyés avec `credentials: 'include'` → côté backend il fa
 
 ### À corriger
 
-- [ ] **Bug `useLogin`** : `onError` appelle `toast.success()` au lieu de `toast.error()` (`features/auth/lib/create-auth.ts:52`).
-- [ ] Harmoniser les `onError` sur tous les hooks auth (`useRegister`, `useLogout`, `useRefresh` n'en ont pas).
-- [ ] Compléter `hooks/use-mobile.ts` (actuellement vide/minimal).
-- [ ] Implémenter `utils/handle-api-error.ts` (fichier vide).
+- [x] **Bug `useLogin`** : `onError` appelle `toast.success()` au lieu de `toast.error()` (`features/auth/lib/create-auth.ts:52`).
+- [x] Harmoniser les `onError` sur tous les hooks auth (`useRegister`, `useLogout`, `useRefresh` n'en ont pas).
+- [x] Compléter `hooks/use-mobile.ts` (actuellement vide/minimal).
+- [x] Implémenter `utils/handle-api-error.ts` (fichier vide).
 - [ ] Remplir `config/navbar-config.ts` (vide).
 
 ### À finir
 
 - [ ] **Dashboard** : page placeholder, à construire (layout, nav, widgets).
-- [ ] **Bouton logout** : pas d'UI pour se déconnecter.
+- [x] **Bouton logout** : pas d'UI pour se déconnecter.
 - [ ] **Page profil / settings** dans `(protected)/`.
-- [ ] **Error boundary** : ajouter `app/[locale]/error.tsx` et `global-error.tsx`.
+- [x] **Error boundary** : ajouter `app/[locale]/error.tsx` et `global-error.tsx`.
 - [ ] **`googleStrategy`** : aujourd'hui c'est un stub `throw new Error('Not implemented')`.
 
 ### À durcir
 
-- [ ] **Middleware d'auth serveur** : actuellement la protection est 100 % côté client (`UserClientProvider`). Ajouter un check dans `proxy.ts` (ou un middleware dédié) qui bloque les routes `(protected)` si le cookie de session est absent/invalide.
+- [x] **Middleware d'auth serveur** : actuellement la protection est 100 % côté client (`UserClientProvider`). Ajouter un check dans `proxy.ts` (ou un middleware dédié) qui bloque les routes `(protected)` si le cookie de session est absent/invalide.
 - [ ] **Refresh token** : logique présente dans `useUser`, mais jamais testée en conditions réelles.
-- [ ] **Retirer `axios`** de `package.json` s'il n'est pas utilisé (on a notre wrapper `fetch`).
+- [x] **Retirer `axios`** de `package.json` s'il n'est pas utilisé (on a notre wrapper `fetch`).
+
+### Sécurité renforcée
+
+- [x] **CSRF** : token store en mémoire, `X-CSRF-Token` injecté sur requêtes mutantes (flag `NEXT_PUBLIC_CSRF_ENABLED`, désactivé par défaut)
+- [x] **CSP Report-Only** : nonce Edge-compatible, directives `script-src`/`style-src`/`connect-src`, `frame-ancestors 'none'`
+- [x] **Headers de sécurité** : `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS (prod)
+- [x] **Zod durci** : email (trim/lowercase/max 254), password login (min 8/max 128), password register (min 12 + complexité), noms (Unicode, min 2/max 50)
+- [x] **Safe redirect** : `safeRedirectTarget()` bloque URL absolues, `//`, `javascript:`, backslash, paths > 2048 chars
+- [x] **Anti-énumération + 429** : messages d'erreur auth génériques côté front, priorité message "Too many attempts" sur 429
+- [x] **Flow returnTo** : middleware passe `?returnTo=<pathname>` lors de la redirection vers `/login`, le form redirige vers `safeRedirectTarget(returnTo, '/dashboard')` après succès
 
 ### Qualité
 
-- [ ] **Tests** : rien n'est en place. Vitest + Testing Library pour l'unitaire, Playwright pour l'e2e.
+- [x] **Tests** : rien n'est en place. Vitest + Testing Library pour l'unitaire, Playwright pour l'e2e.
 - [ ] **CI** : GitHub Actions (lint + typecheck + build).
 - [ ] **Commitlint** + Conventional Commits (optionnel).
 - [ ] **Storybook** ou équivalent pour les composants UI (optionnel).
