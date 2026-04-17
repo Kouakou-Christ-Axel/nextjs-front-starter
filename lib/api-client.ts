@@ -1,6 +1,7 @@
 import { AUTH_COOKIE_NAMES } from '@/config/auth';
 import { env } from '@/config/env';
 import { ApiError } from '@/lib/api-error';
+import { appCsrfStore, fetchCsrfToken, isMutatingMethod } from '@/lib/csrf';
 import { ApiResponse } from '@/types/api';
 
 type RequestBody = Record<string, unknown>;
@@ -80,6 +81,19 @@ async function fetchApi<T>(
     params
   );
 
+  let csrfHeaders: Record<string, string> = {};
+  if (
+    env.NEXT_PUBLIC_CSRF_ENABLED &&
+    isMutatingMethod(method) &&
+    typeof window !== 'undefined'
+  ) {
+    let token = appCsrfStore.get();
+    if (!token) {
+      token = await fetchCsrfToken(env.NEXT_PUBLIC_BACKEND_URL, appCsrfStore);
+    }
+    csrfHeaders = { 'X-CSRF-Token': token };
+  }
+
   try {
     if (process.env.NODE_ENV !== 'production') {
       console.log(`[api] ${method} ${url}`);
@@ -90,6 +104,7 @@ async function fetchApi<T>(
         'Content-Type': 'application/json',
         Accept: 'application/json',
         ...headers,
+        ...csrfHeaders,
         ...(cookieHeader ? { Cookie: cookieHeader } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
@@ -117,6 +132,9 @@ async function fetchApi<T>(
     return responseBody as ApiResponse<T>;
   } catch (error) {
     if (error instanceof ApiError) {
+      if (error.status === 403 && env.NEXT_PUBLIC_CSRF_ENABLED) {
+        appCsrfStore.clear();
+      }
       throw error;
     }
     if (process.env.NODE_ENV !== 'production') {

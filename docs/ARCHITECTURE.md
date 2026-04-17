@@ -390,6 +390,29 @@ api.get<IProduct[]>('/catalog', { next: { revalidate: 3600 } });
 
 **Règle** : surcharger uniquement si l'endpoint est **non-authentifié** et que la donnée ne dépend pas de l'utilisateur. Dans le doute, garder `no-store`.
 
+### 7.5 CSRF
+
+Les cookies JWT sont envoyés automatiquement par le navigateur (`credentials: 'include'`), y compris sur des requêtes forgées depuis un site tiers. Sans défense, un attaquant peut déclencher une mutation au nom de la victime (**Cross-Site Request Forgery**).
+
+La parade retenue est le **double-submit cookie** : le backend pose un cookie CSRF signé et renvoie la même valeur dans un header. Le front récupère la valeur, la réinjecte dans le header `X-CSRF-Token` sur chaque requête mutante. Un attaquant cross-origin peut envoyer le cookie (le navigateur le fait) mais ne peut pas lire sa valeur pour forger le header — la mutation est rejetée.
+
+**Flux côté front** (`lib/csrf.ts` + intégration dans `lib/api-client.ts`) :
+
+1. Avant chaque requête `POST/PUT/PATCH/DELETE`, si un token est absent du store en mémoire, appeler `GET /csrf-token`.
+2. Injecter `X-CSRF-Token: <token>` dans les headers de la mutation.
+3. Sur `403`, vider le store pour forcer un refetch au prochain appel (pas de retry automatique).
+4. Le store est un singleton **module-level** — jamais de `localStorage` (vecteur XSS).
+
+**Toggle** — `NEXT_PUBLIC_CSRF_ENABLED` (défaut `false`). Tant que le backend n'expose pas `/csrf-token`, la variable reste à `false` et le dance CSRF est court-circuité (rétrocompatibilité). À basculer à `true` quand le backend est prêt.
+
+**Exigences backend** :
+
+- Exposer `GET /csrf-token` qui **pose un cookie signé** (HttpOnly=false pour le pattern double-submit, SameSite=Lax, Secure en prod) et renvoie `{ csrfToken: "..." }`.
+- Valider `X-CSRF-Token` sur toutes les routes mutantes (middleware `csrf-csrf` ou équivalent).
+- Rejeter avec `403` si header manquant ou invalide.
+
+**Limitation** : le check `typeof window !== 'undefined'` désactive le dance côté serveur (RSC). Les mutations server-side (Server Actions) nécessiteraient une stratégie dédiée — hors scope de cette version.
+
 ---
 
 ## 8. Gestion des erreurs

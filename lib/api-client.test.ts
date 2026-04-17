@@ -129,4 +129,118 @@ describe('api-client', () => {
       expect(result).not.toContain('tracking');
     });
   });
+
+  describe('CSRF (#1)', () => {
+    const BACKEND_URL = 'http://api.example.com';
+
+    function mockEnv(csrfEnabled: boolean) {
+      vi.doMock('@/config/env', () => ({
+        env: {
+          NEXT_PUBLIC_BACKEND_URL: BACKEND_URL,
+          NEXT_PUBLIC_CSRF_ENABLED: csrfEnabled,
+        },
+      }));
+    }
+
+    it('does not send X-CSRF-Token on mutation when flag is disabled', async () => {
+      mockEnv(false);
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, data: null }),
+      });
+      global.fetch = fetchSpy as unknown as typeof fetch;
+
+      const { api } = await import('@/lib/api-client');
+      await api.post('/users', { name: 'x' });
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const [, init] = fetchSpy.mock.calls[0];
+      expect(init.headers).not.toHaveProperty('X-CSRF-Token');
+    });
+
+    it('fetches /csrf-token then sends X-CSRF-Token on mutation when flag is enabled', async () => {
+      mockEnv(true);
+      const fetchSpy = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({ csrfToken: 't1' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({ success: true, data: null }),
+        });
+      global.fetch = fetchSpy as unknown as typeof fetch;
+
+      const { api } = await import('@/lib/api-client');
+      await api.post('/users', { name: 'x' });
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      const [firstUrl] = fetchSpy.mock.calls[0];
+      expect(firstUrl).toBe(`${BACKEND_URL}/csrf-token`);
+      const [, mutationInit] = fetchSpy.mock.calls[1];
+      expect(mutationInit.headers['X-CSRF-Token']).toBe('t1');
+    });
+
+    it('reuses cached CSRF token without refetching', async () => {
+      mockEnv(true);
+      const { appCsrfStore: store } = await import('@/lib/csrf');
+      store.set('cached-token');
+
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, data: null }),
+      });
+      global.fetch = fetchSpy as unknown as typeof fetch;
+
+      const { api } = await import('@/lib/api-client');
+      await api.post('/users', { name: 'x' });
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchSpy.mock.calls[0];
+      expect(url).toBe(`${BACKEND_URL}/users`);
+      expect(init.headers['X-CSRF-Token']).toBe('cached-token');
+    });
+
+    it('does not send X-CSRF-Token on GET (non-mutating) even when flag is enabled', async () => {
+      mockEnv(true);
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, data: null }),
+      });
+      global.fetch = fetchSpy as unknown as typeof fetch;
+
+      const { api } = await import('@/lib/api-client');
+      await api.get('/users');
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchSpy.mock.calls[0];
+      expect(url).toBe(`${BACKEND_URL}/users`);
+      expect(init.headers).not.toHaveProperty('X-CSRF-Token');
+    });
+
+    it('clears the cached token on 403 response', async () => {
+      mockEnv(true);
+      const { appCsrfStore: store } = await import('@/lib/csrf');
+      store.set('stale');
+
+      const fetchSpy = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+        json: async () => ({ message: 'invalid csrf token' }),
+      });
+      global.fetch = fetchSpy as unknown as typeof fetch;
+
+      const { api } = await import('@/lib/api-client');
+      await expect(api.post('/users', { name: 'x' })).rejects.toThrow();
+
+      expect(store.get()).toBeNull();
+    });
+  });
 });
