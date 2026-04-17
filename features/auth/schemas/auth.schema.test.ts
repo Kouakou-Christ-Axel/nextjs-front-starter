@@ -1,18 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { loginSchema, registerSchema } from './auth.schema';
 
-// Helper: collect all i18n message keys from a failed parse result
-function getMessages(
-  issues: Array<{ message: string; path: (string | number)[] }>
-) {
-  return issues.map((i) => i.message);
-}
+type IssueLike = { message: string; path: ReadonlyArray<PropertyKey> };
 
-function getMessagesForPath(
-  issues: Array<{ message: string; path: (string | number)[] }>,
-  path: string
-) {
-  return issues.filter((i) => i.path.join('.') === path).map((i) => i.message);
+function getMessagesForPath(issues: ReadonlyArray<IssueLike>, path: string) {
+  return issues
+    .filter((i) => i.path.map(String).join('.') === path)
+    .map((i) => i.message);
 }
 
 describe('loginSchema', () => {

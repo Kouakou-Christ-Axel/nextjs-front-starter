@@ -1,4 +1,3 @@
-import type { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -21,7 +20,7 @@ const securityHeaders = [
     : []),
 ];
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   experimental: {
     globalNotFound: true,
   },
