@@ -102,9 +102,11 @@ Ce repo est **100 % front**. Pas de Route Handler (`app/api/…`), pas d'ORM, pa
 | **Composants UI**      | `components/ui/`                             | Briques génériques (Button, Input, Form…)              |
 | **Composants feature** | `components/features/<domaine>/`             | Composants liés à un domaine (LoginForm…)              |
 | **Providers**          | `components/providers/`                      | Contextes (ReactQuery, Theme, User…)                   |
-| **Hooks domaine**      | `features/<domaine>/lib/`                    | Hooks React Query adaptés au domaine                   |
-| **Stratégie**          | `features/<domaine>/strategies/`             | Implémentations de l'interface métier                  |
-| **Requêtes**           | `features/<domaine>/requests/`               | Fonctions qui appellent `api`                          |
+| **Queries serveur**    | `features/<domaine>/queries/`                | Hooks `useQuery` (state serveur, lecture)              |
+| **Mutations serveur**  | `features/<domaine>/mutations/`              | Hooks `useMutation` (state serveur, écriture)          |
+| **Hooks UI**           | `features/<domaine>/hooks/`                  | Hooks état client/UI (filtres, formulaires…)           |
+| **Stratégie**          | `features/<domaine>/strategies/`             | Implémentations de l'interface métier (auth only)      |
+| **Requêtes**           | `features/<domaine>/api/`                    | Fonctions qui appellent `api`                          |
 | **Schémas**            | `features/<domaine>/schemas/`                | Zod pour les formulaires                               |
 | **Types**              | `features/<domaine>/types/`                  | Interfaces TypeScript du domaine                       |
 | **Transport**          | `lib/api-client.ts`, `lib/api-error.ts`      | fetch + erreurs, **neutre au domaine**                 |
@@ -589,7 +591,9 @@ Combine `clsx` + `tailwind-merge` : résout les conflits de classes Tailwind (ex
 
 - Composants depuis `components/*`.
 - Hooks génériques depuis `hooks/*`.
-- Hooks de domaine depuis `features/<domaine>/lib/*` **ou via un réexport centralisé** (ex. `lib/auth.ts`).
+- Queries depuis `features/<domaine>/queries/*`, mutations depuis `features/<domaine>/mutations/*`.
+- Hooks UI depuis `features/<domaine>/hooks/*`.
+- Hooks auth depuis `lib/auth.ts` (réexport centralisé — exception au pattern général).
 - `api` depuis `@/lib/api-client`.
 - `env` depuis `@/config/env`.
 
@@ -605,8 +609,8 @@ Toujours :
 ### 14.4 Réseau
 
 - **Toute requête passe par `api`** (jamais de `fetch` direct dans un composant).
-- Les fonctions de requête vivent dans `features/<domaine>/requests/`.
-- Un composant n'appelle **jamais** une request directement — il passe par un hook.
+- Les fonctions de requête vivent dans `features/<domaine>/api/`.
+- Un composant n'appelle **jamais** une request directement — il passe par un hook de `queries/` ou `mutations/`.
 
 ### 14.5 Erreurs
 
@@ -626,26 +630,37 @@ Toujours :
 
 Checklist pour ajouter un nouveau domaine (ex. `posts`) :
 
+```
+features/posts/
+  types/
+    post.type.ts                         # interface IPost
+  schemas/
+    post.schema.ts                       # Zod schemas + types inférés
+  api/
+    post.request.ts                      # fonctions pures (getPostsRequest, …)
+  queries/
+    query-keys.ts                        # constantes de clés React Query
+    use-posts.query.ts                   # useQuery liste  + use-posts.query.test.ts
+    use-post.query.ts                    # useQuery détail + use-post.query.test.ts
+  mutations/
+    use-create-post.mutation.ts          # useMutation     + use-create-post.mutation.test.ts
+    use-update-post.mutation.ts          #                 + use-update-post.mutation.test.ts
+    use-delete-post.mutation.ts          #                 + use-delete-post.mutation.test.ts
+  hooks/                                 # hooks UI (non générés — dépendent du contexte)
+  index.ts                               # barrel export
+```
+
 1. **Types** : `features/posts/types/post.type.ts` → `interface IPost { … }`.
 2. **Schémas** : `features/posts/schemas/post.schema.ts` → `createPostSchema`, etc.
-3. **Requests** : `features/posts/requests/post.request.ts` :
-   ```ts
-   export const getPostsRequest = () => api.get<IPost[]>('/posts');
-   export const createPostRequest = (data) => api.post<IPost>('/posts', data);
-   ```
-4. **Hooks** : `features/posts/lib/use-posts.ts` :
-   ```ts
-   export const usePosts = () =>
-     useQuery({
-       queryKey: ['posts', 'list'],
-       queryFn: async () => (await getPostsRequest()).data,
-     });
-   ```
-5. **Composants UI** : `components/features/posts/post-list.tsx`, `post-form.tsx`.
-6. **i18n** : `i18n/messages/{en,fr}/posts.json`.
-7. **Pages** : `app/[locale]/(protected)/posts/page.tsx`.
+3. **API** : `features/posts/api/post.request.ts` — fonctions pures qui appellent `api`.
+4. **Query keys** : `features/posts/queries/query-keys.ts` — constantes centralisées.
+5. **Queries** : un fichier `.query.ts` par hook de lecture (`use-posts.query.ts`, `use-post.query.ts`).
+6. **Mutations** : un fichier `.mutation.ts` par hook d'écriture (`use-create-post.mutation.ts`, …).
+7. **Composants UI** : `components/features/posts/post-list.tsx`, `post-form.tsx`.
+8. **i18n** : `i18n/messages/{en,fr}/posts.json`.
+9. **Pages** : `app/[locale]/(protected)/posts/page.tsx`.
 
-> Si la feature nécessite plusieurs providers interchangeables (comme l'auth), ajouter une interface + factory comme `createAuth`.
+> Si la feature nécessite plusieurs providers interchangeables (comme l'auth), ajouter une interface + factory comme `createAuth`. Ce pattern est **réservé à auth**.
 
 ---
 
