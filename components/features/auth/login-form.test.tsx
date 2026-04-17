@@ -1,4 +1,3 @@
-'use client';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -42,24 +41,11 @@ import LoginForm from './login-form';
 
 // ── helper : retourne un faux résultat de useLogin ────────────────────────────
 function makeMockUseLogin(
-  overrides: Partial<ReturnType<typeof auth.useLogin>> = {}
+  overrides: { mutate?: ReturnType<typeof vi.fn>; isPending?: boolean } = {}
 ) {
   return {
     mutate: vi.fn(),
-    mutateAsync: vi.fn(),
     isPending: false,
-    isSuccess: false,
-    isError: false,
-    isIdle: true,
-    data: undefined,
-    error: null,
-    reset: vi.fn(),
-    status: 'idle' as const,
-    variables: undefined,
-    failureCount: 0,
-    failureReason: null,
-    context: undefined,
-    submittedAt: 0,
     ...overrides,
   } as unknown as ReturnType<typeof auth.useLogin>;
 }
@@ -84,16 +70,32 @@ describe('LoginForm — flow returnTo', () => {
     } as unknown as ReturnType<typeof navigation.useRouter>);
   });
 
-  it('redirige vers /dashboard par défaut quand returnTo est absent et isSuccess=true', async () => {
+  it('redirige vers /dashboard par défaut quand returnTo est absent', async () => {
     vi.mocked(nextNavigation.useSearchParams).mockReturnValue({
       get: () => null,
     } as unknown as ReturnType<typeof nextNavigation.useSearchParams>);
 
+    const mutateMock = vi
+      .fn()
+      .mockImplementation(
+        (_data: unknown, options?: { onSuccess?: () => void }) => {
+          options?.onSuccess?.();
+        }
+      );
+
     vi.spyOn(auth, 'useLogin').mockReturnValue(
-      makeMockUseLogin({ isSuccess: true })
+      makeMockUseLogin({ mutate: mutateMock })
     );
 
     renderWithSuspense(<LoginForm />);
+
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByPlaceholderText('exemple@email.com'),
+      'test@example.com'
+    );
+    await user.type(screen.getByPlaceholderText('••••••••'), 'password123');
+    await user.click(screen.getByRole('button', { name: 'login.submit' }));
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/dashboard'));
   });
@@ -104,11 +106,27 @@ describe('LoginForm — flow returnTo', () => {
         key === 'returnTo' ? '/fr/dashboard/settings' : null,
     } as unknown as ReturnType<typeof nextNavigation.useSearchParams>);
 
+    const mutateMock = vi
+      .fn()
+      .mockImplementation(
+        (_data: unknown, options?: { onSuccess?: () => void }) => {
+          options?.onSuccess?.();
+        }
+      );
+
     vi.spyOn(auth, 'useLogin').mockReturnValue(
-      makeMockUseLogin({ isSuccess: true })
+      makeMockUseLogin({ mutate: mutateMock })
     );
 
     renderWithSuspense(<LoginForm />);
+
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByPlaceholderText('exemple@email.com'),
+      'test@example.com'
+    );
+    await user.type(screen.getByPlaceholderText('••••••••'), 'password123');
+    await user.click(screen.getByRole('button', { name: 'login.submit' }));
 
     await waitFor(() =>
       expect(pushMock).toHaveBeenCalledWith('/fr/dashboard/settings')
@@ -121,26 +139,76 @@ describe('LoginForm — flow returnTo', () => {
         key === 'returnTo' ? 'https://evil.com/phishing' : null,
     } as unknown as ReturnType<typeof nextNavigation.useSearchParams>);
 
+    const mutateMock = vi
+      .fn()
+      .mockImplementation(
+        (_data: unknown, options?: { onSuccess?: () => void }) => {
+          options?.onSuccess?.();
+        }
+      );
+
     vi.spyOn(auth, 'useLogin').mockReturnValue(
-      makeMockUseLogin({ isSuccess: true })
+      makeMockUseLogin({ mutate: mutateMock })
     );
 
     renderWithSuspense(<LoginForm />);
 
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByPlaceholderText('exemple@email.com'),
+      'test@example.com'
+    );
+    await user.type(screen.getByPlaceholderText('••••••••'), 'password123');
+    await user.click(screen.getByRole('button', { name: 'login.submit' }));
+
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/dashboard'));
   });
 
-  it('ne redirige pas tant que isSuccess est false', () => {
+  it('ne redirige pas si la mutation ne déclenche pas onSuccess', () => {
     vi.mocked(nextNavigation.useSearchParams).mockReturnValue({
       get: () => '/fr/dashboard',
     } as unknown as ReturnType<typeof nextNavigation.useSearchParams>);
 
+    // mutate ne déclenche pas onSuccess → pas de navigation
+    const mutateMock = vi.fn();
+
     vi.spyOn(auth, 'useLogin').mockReturnValue(
-      makeMockUseLogin({ isSuccess: false })
+      makeMockUseLogin({ mutate: mutateMock })
     );
 
     renderWithSuspense(<LoginForm />);
 
     expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it('redirige vers /login quand returnTo vaut /login (chemin relatif valide)', async () => {
+    // safeRedirectTarget accepte /login — comportement intentionnel documenté
+    vi.mocked(nextNavigation.useSearchParams).mockReturnValue({
+      get: (key: string) => (key === 'returnTo' ? '/login' : null),
+    } as unknown as ReturnType<typeof nextNavigation.useSearchParams>);
+
+    const mutateMock = vi
+      .fn()
+      .mockImplementation(
+        (_data: unknown, options?: { onSuccess?: () => void }) => {
+          options?.onSuccess?.();
+        }
+      );
+
+    vi.spyOn(auth, 'useLogin').mockReturnValue(
+      makeMockUseLogin({ mutate: mutateMock })
+    );
+
+    renderWithSuspense(<LoginForm />);
+
+    const user = userEvent.setup();
+    await user.type(
+      screen.getByPlaceholderText('exemple@email.com'),
+      'test@example.com'
+    );
+    await user.type(screen.getByPlaceholderText('••••••••'), 'password123');
+    await user.click(screen.getByRole('button', { name: 'login.submit' }));
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/login'));
   });
 });

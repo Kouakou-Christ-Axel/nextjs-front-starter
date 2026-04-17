@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import {
@@ -46,20 +46,15 @@ function LoginForm() {
     },
   });
 
-  const {
-    mutate: loginMutation,
-    isPending: loginMutationIsPending,
-    isSuccess,
-  } = useLogin();
+  const { mutate: loginMutation, isPending: loginMutationIsPending } =
+    useLogin();
 
-  useEffect(() => {
-    if (isSuccess) {
-      router.push(safeRedirectTarget(returnTo, '/dashboard'));
-    }
-  }, [isSuccess, returnTo, router]);
-
-  async function onSubmit(data: LoginSchemaType) {
-    loginMutation(data);
+  function onSubmit(data: LoginSchemaType) {
+    loginMutation(data, {
+      onSuccess: () => {
+        router.push(safeRedirectTarget(returnTo, '/dashboard'));
+      },
+    });
   }
 
   const isLoading = form.formState.isSubmitting || loginMutationIsPending;
