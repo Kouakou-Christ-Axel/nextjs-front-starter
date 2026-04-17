@@ -1,4 +1,5 @@
 import createNextIntlPlugin from 'next-intl/plugin';
+import { varlockNextConfigPlugin } from '@varlock/nextjs-integration/plugin';
 
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -30,5 +31,6 @@ const nextConfig = {
 };
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
+const withVarlock = varlockNextConfigPlugin();
 
-export default withNextIntl(nextConfig);
+export default withVarlock(withNextIntl(nextConfig));

@@ -34,7 +34,7 @@ Starter Next.js perso, pensé pour démarrer vite un nouveau projet entre potes 
 | Thème          | next-themes (light / dark)                                        |
 | Toasts         | Sonner                                                            |
 | Query string   | Nuqs                                                              |
-| Validation env | `@t3-oss/env-nextjs`                                              |
+| Validation env | [varlock](https://varlock.dev) (`.env.schema` + `@env-spec`)      |
 | Lint / Format  | ESLint 9 (flat config) + Prettier + `prettier-plugin-tailwindcss` |
 | Git hooks      | Husky + lint-staged                                               |
 
@@ -49,7 +49,7 @@ Pas d'ORM, pas de handler API dans ce repo : c'est un **front pur** qui tape sur
 
 ```bash
 bun install
-cp .env.example .env.local       # puis éditer NEXT_PUBLIC_BACKEND_URL
+# Crée .env.local en reprenant les valeurs de .env.schema
 bun run dev                      # http://localhost:3000
 ```
 
@@ -57,13 +57,23 @@ Le site redirige automatiquement vers `/fr` (locale par défaut).
 
 ## Variables d'environnement
 
-Fichier `.env.local` (gitignoré) :
+La source de vérité est **`.env.schema`** (format [varlock](https://varlock.dev)). Chaque variable y est déclarée avec ses décorateurs (`@required`, `@type=url`, `@sensitive`, etc.) et sa valeur par défaut :
 
-```env
+```
+# @required @type=url
 NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
 ```
 
-La validation est faite dans `config/env.ts` via `@t3-oss/env-nextjs` — si une variable requise manque, le build plante avec un message clair.
+Pour surcharger en local, crée un `.env.local` (gitignoré) avec les mêmes clés. Le fichier `env.d.ts` (auto-généré par `bunx varlock typegen` ou par le plugin Next) donne le typage à l'accès via `ENV` ou `env`.
+
+Accès typé dans le code :
+
+```ts
+import { env } from '@/config/env';
+env.NEXT_PUBLIC_BACKEND_URL; // string, garanti non-vide
+```
+
+Si une variable `@required` manque au build/dev, varlock plante avec un message clair.
 
 ## Scripts
 

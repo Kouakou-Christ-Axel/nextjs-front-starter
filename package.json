@@ -24,6 +24,7 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@tabler/icons-react": "^3.36.0",
     "@tanstack/react-query": "^5.90.16",
+    "@varlock/nextjs-integration": "^0.3.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -40,6 +41,7 @@
     "react-hook-form": "^7.70.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
+    "varlock": "^0.9.0",
     "zod": "^4.3.5"
   },
   "devDependencies": {

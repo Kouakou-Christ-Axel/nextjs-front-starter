@@ -468,37 +468,42 @@ Ordre d'empilement dans `app/[locale]/layout.tsx` :
 
 ## 11. Validation d'environnement
 
-`config/env.ts` utilise `@t3-oss/env-nextjs` + Zod :
+La source de vérité est **`.env.schema`** (format [varlock](https://varlock.dev) / @env-spec). Chaque variable y déclare son type, sa sensibilité et sa valeur par défaut :
 
-```ts
-export const env = createEnv({
-  server: {},
-  client: {
-    NEXT_PUBLIC_BACKEND_URL: z.url().default('http://localhost:3000'),
-  },
-  runtimeEnv: { NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL },
-  onValidationError: (issues) => {
-    console.error('❌ Invalid environment variables:', issues);
-    process.exit(1);
-  },
-});
+```
+# @defaultRequired=infer @defaultSensitive=false
+# @generateTypes(lang=ts, path=env.d.ts)
+# ----------
+
+# @required @type=url
+NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
 ```
 
-**Conséquence** : si une variable requise manque ou est invalide, le build plante avec un message clair. **Toujours importer `env` depuis `@/config/env`**, jamais `process.env.X` directement.
+Le plugin `varlockNextConfigPlugin` (dans `next.config.ts`) charge et valide les variables au démarrage dev/build, et le décorateur `@generateTypes` produit `env.d.ts` (augmentation du module `varlock/env` + `ProcessEnv` globale).
+
+Accès typé dans le code :
+
+```ts
+import { env } from '@/config/env'; // ré-export de ENV depuis 'varlock/env'
+env.NEXT_PUBLIC_BACKEND_URL; // string, garanti non-vide par @required
+```
+
+**Conséquence** : si une variable `@required` manque, le build/dev plante avec un message clair. **Toujours importer `env` depuis `@/config/env`** (ou `ENV` depuis `varlock/env`) — jamais `process.env.X` directement dans le code applicatif.
 
 **Ajouter une variable** :
 
-1. L'ajouter dans `server: {}` ou `client: {}` avec son schéma Zod.
-2. L'ajouter dans `runtimeEnv` (obligatoire pour les vars `NEXT_PUBLIC_*`).
-3. L'ajouter dans `.env.example`.
+1. La déclarer dans `.env.schema` avec les bons décorateurs (`@required`, `@type=...`, `@sensitive` si secret).
+2. Lancer `bunx varlock typegen` pour rafraîchir `env.d.ts` (le plugin le fait au build, mais explicit c'est plus sûr en dev).
+3. Si elle est `@required` sans default, la renseigner dans `.env.local`.
 
 ### 11.1 Secrets : server vs client
 
 Quand on ajoutera des secrets serveur (clé webhook backend, DSN Sentry privée, clé d'API tierce, etc.) :
 
-- Les déclarer dans **`server: { ... }`** de `createEnv`, **jamais** dans `client`. `@t3-oss/env-nextjs` lève une erreur au build si on essaie de lire une var `server` depuis un composant client.
+- Les déclarer avec **`@sensitive`** dans `.env.schema` — varlock empêche qu'ils soient inlinés dans le bundle navigateur (la règle Next.js est que seules les variables préfixées `NEXT_PUBLIC_*` le sont, mais `@sensitive` agit comme garde-fou explicite).
 - Les variables préfixées **`NEXT_PUBLIC_*`** sont **inlinées dans le bundle navigateur** par Next.js. Elles sont publiques par construction — n'y mettre **aucun secret** (token, clé privée, mot de passe). Le préfixe actuel `NEXT_PUBLIC_BACKEND_URL` est légitime (c'est une URL publique).
-- Vérifier que `.gitignore` couvre bien `.env*.local` à chaque ajout de secret local. `.env.example` ne doit contenir que des **placeholders**, jamais de vraies valeurs.
+- Vérifier que `.gitignore` couvre `.env*.local` à chaque ajout de secret local. `.env.schema` est tracké (décorateurs sans valeurs), `.env.local` ne l'est pas.
+- `varlock scan` (CLI) permet de détecter les valeurs sensibles hardcodées dans les fichiers du projet.
 
 ---
 
