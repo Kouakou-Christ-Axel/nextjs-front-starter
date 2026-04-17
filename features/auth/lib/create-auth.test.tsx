@@ -3,7 +3,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { createAuth } from './create-auth';
+import {
+  createAuth,
+  GENERIC_LOGIN_ERROR,
+  GENERIC_REGISTER_ERROR,
+  RATE_LIMITED_MESSAGE,
+} from './create-auth';
 import { AuthStrategy } from '@/features/auth/types/auth.type';
 import { ApiError } from '@/lib/api-error';
 import { IUser } from '@/features/auth/types/user.type';
@@ -53,7 +58,7 @@ describe('createAuth > useLogin', () => {
     vi.clearAllMocks();
   });
 
-  it('calls toast.error (not toast.success) with the ApiError message on login failure', async () => {
+  it('calls toast.error with the generic login message on login failure (does not expose backend message)', async () => {
     const strategy = makeStrategy({
       login: vi
         .fn()
@@ -66,10 +71,31 @@ describe('createAuth > useLogin', () => {
     result.current.mutate({ email: 'x@y.z', password: '12345678' });
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Invalid credentials');
+      expect(toast.error).toHaveBeenCalledWith(GENERIC_LOGIN_ERROR);
     });
 
+    expect(toast.error).not.toHaveBeenCalledWith('Invalid credentials');
     expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it('calls toast.error with the rate-limit message on 429', async () => {
+    const strategy = makeStrategy({
+      login: vi
+        .fn()
+        .mockRejectedValue(new ApiError(429, 'backend rate limit msg')),
+    });
+    const { useLogin } = createAuth({ mock: strategy }, 'mock');
+
+    const { result } = renderHook(() => useLogin(), { wrapper: makeWrapper() });
+
+    result.current.mutate({ email: 'x@y.z', password: '12345678' });
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(RATE_LIMITED_MESSAGE);
+    });
+
+    expect(toast.error).not.toHaveBeenCalledWith('backend rate limit msg');
+    expect(toast.error).not.toHaveBeenCalledWith(GENERIC_LOGIN_ERROR);
   });
 });
 
@@ -78,7 +104,7 @@ describe('createAuth > useRegister', () => {
     vi.clearAllMocks();
   });
 
-  it('calls toast.error with the ApiError message on register failure', async () => {
+  it('calls toast.error with the generic register message on register failure (does not expose backend message)', async () => {
     const strategy = makeStrategy({
       register: vi
         .fn()
@@ -99,8 +125,38 @@ describe('createAuth > useRegister', () => {
     });
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Email already taken');
+      expect(toast.error).toHaveBeenCalledWith(GENERIC_REGISTER_ERROR);
     });
+
+    expect(toast.error).not.toHaveBeenCalledWith('Email already taken');
+  });
+
+  it('calls toast.error with the rate-limit message on 429', async () => {
+    const strategy = makeStrategy({
+      register: vi
+        .fn()
+        .mockRejectedValue(new ApiError(429, 'backend rate limit msg')),
+    });
+    const { useRegister } = createAuth({ mock: strategy }, 'mock');
+
+    const { result } = renderHook(() => useRegister(), {
+      wrapper: makeWrapper(),
+    });
+
+    result.current.mutate({
+      email: 'x@y.z',
+      password: '12345678',
+      confirmPassword: '12345678',
+      firstName: 'John',
+      lastName: 'Doe',
+    });
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(RATE_LIMITED_MESSAGE);
+    });
+
+    expect(toast.error).not.toHaveBeenCalledWith('backend rate limit msg');
+    expect(toast.error).not.toHaveBeenCalledWith(GENERIC_REGISTER_ERROR);
   });
 });
 
@@ -125,6 +181,27 @@ describe('createAuth > useLogout', () => {
       expect(toast.error).toHaveBeenCalledWith('Logout failed');
     });
   });
+
+  it('calls toast.error with the rate-limit message on 429', async () => {
+    const strategy = makeStrategy({
+      logout: vi
+        .fn()
+        .mockRejectedValue(new ApiError(429, 'backend rate limit msg')),
+    });
+    const { useLogout } = createAuth({ mock: strategy }, 'mock');
+
+    const { result } = renderHook(() => useLogout(), {
+      wrapper: makeWrapper(),
+    });
+
+    result.current.mutate();
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(RATE_LIMITED_MESSAGE);
+    });
+
+    expect(toast.error).not.toHaveBeenCalledWith('backend rate limit msg');
+  });
 });
 
 describe('createAuth > useRefresh', () => {
@@ -147,5 +224,26 @@ describe('createAuth > useRefresh', () => {
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('Session expired');
     });
+  });
+
+  it('calls toast.error with the rate-limit message on 429', async () => {
+    const strategy = makeStrategy({
+      refresh: vi
+        .fn()
+        .mockRejectedValue(new ApiError(429, 'backend rate limit msg')),
+    });
+    const { useRefresh } = createAuth({ mock: strategy }, 'mock');
+
+    const { result } = renderHook(() => useRefresh(), {
+      wrapper: makeWrapper(),
+    });
+
+    result.current.mutate();
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(RATE_LIMITED_MESSAGE);
+    });
+
+    expect(toast.error).not.toHaveBeenCalledWith('backend rate limit msg');
   });
 });
