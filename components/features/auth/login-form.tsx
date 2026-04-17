@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import {
@@ -27,11 +27,17 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/animate-ui/components/buttons/button';
-import { Link } from '@/i18n/navigation';
+import { Link, useRouter } from '@/i18n/navigation';
 import { useLogin } from '@/lib/auth';
+import { useSearchParams } from 'next/navigation';
+import { safeRedirectTarget } from '@/lib/safe-redirect';
 
 function LoginForm() {
   const t = useTranslations('auth');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get('returnTo');
+
   const form = useForm<LoginSchemaType>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -40,8 +46,17 @@ function LoginForm() {
     },
   });
 
-  const { mutate: loginMutation, isPending: loginMutationIsPending } =
-    useLogin();
+  const {
+    mutate: loginMutation,
+    isPending: loginMutationIsPending,
+    isSuccess,
+  } = useLogin();
+
+  useEffect(() => {
+    if (isSuccess) {
+      router.push(safeRedirectTarget(returnTo, '/dashboard'));
+    }
+  }, [isSuccess, returnTo, router]);
 
   async function onSubmit(data: LoginSchemaType) {
     loginMutation(data);
