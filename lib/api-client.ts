@@ -2,6 +2,18 @@ import { env } from '@/config/env';
 import { ApiError } from '@/lib/api-error';
 import { ApiResponse } from '@/types/api';
 
+// Whitelist of cookies forwarded to the backend. Must match cookies set by the backend auth layer.
+const AUTH_COOKIE_NAMES = new Set([
+  'access_token',
+  'refresh_token',
+  'jwt',
+  'session',
+  'csrf-token',
+  '__Host-access_token',
+  '__Host-refresh_token',
+  '__Host-psifi.x-csrf-token',
+]);
+
 type RequestBody = Record<string, unknown>;
 
 type RequestOptions = {
@@ -41,6 +53,7 @@ export function getServerCookies() {
       const cookieStore = await cookies();
       return cookieStore
         .getAll()
+        .filter((c) => AUTH_COOKIE_NAMES.has(c.name))
         .map((c) => `${c.name}=${c.value}`)
         .join('; ');
     } catch (error) {
@@ -79,7 +92,9 @@ async function fetchApi<T>(
   );
 
   try {
-    console.log(`Making ${method} request to: ${fullUrl}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[api] ${method} ${url}`);
+    }
     const response = await fetch(fullUrl, {
       method,
       headers: {
@@ -115,7 +130,9 @@ async function fetchApi<T>(
     if (error instanceof ApiError) {
       throw error;
     }
-    console.log(error);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error(error);
+    }
     throw new ApiError<T>(
       500,
       (error as Error).message || 'An unknown error occurred',

@@ -4,6 +4,15 @@ import React from 'react';
 import { IUser } from '@/features/auth/types/user.type';
 import { ApiError } from '@/lib/api-error';
 import { toast } from 'sonner';
+import { handleApiError } from '@/utils/handle-api-error';
+
+function makeOnError(context: string, fallback: string) {
+  return (error: unknown) => {
+    const { message } = handleApiError(error, fallback);
+    toast.error(message);
+    console.error(`${context}:`, error);
+  };
+}
 
 export function createAuth(
   strategies: Record<string, AuthStrategy>,
@@ -48,14 +57,7 @@ export function createAuth(
       onSuccess: (data) => {
         setUser(data);
       },
-      onError: (error) => {
-        toast.success(
-          error instanceof ApiError
-            ? error.message
-            : 'An error occurred during login.'
-        );
-        console.error('Login error:', error);
-      },
+      onError: makeOnError('Login error', 'An error occurred during login.'),
     });
   };
 
@@ -71,6 +73,7 @@ export function createAuth(
       onSuccess: () => {
         clearUser();
       },
+      onError: makeOnError('Logout error', 'An error occurred during logout.'),
     });
   };
 
@@ -89,6 +92,10 @@ export function createAuth(
       onSuccess: (data) => {
         setUser(data);
       },
+      onError: makeOnError(
+        'Register error',
+        'An error occurred during registration.'
+      ),
     });
   };
 
@@ -103,6 +110,7 @@ export function createAuth(
       onSuccess: (data) => {
         queryClient.setQueryData(userKey, data);
       },
+      onError: makeOnError('Refresh error', 'Session refresh failed.'),
     });
   };
 

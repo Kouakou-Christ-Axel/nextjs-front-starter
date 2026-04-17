@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import '../globals.css';
-import { NextIntlClientProvider } from 'next-intl';
+import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import React from 'react';
 import { siteConfig } from '@/config/site-config';
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { NuqsAdapter } from 'nuqs/adapters/next';
 import ReactQueryProvider from '@/components/providers/react-query-provider';
 import { Toaster } from 'sonner';
+import { routing } from '@/i18n/routing';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -32,9 +33,12 @@ export default async function RootLayout({
   params: Promise<{ locale: string }>;
 }>) {
   const { locale } = await params;
+  const safeLocale = hasLocale(routing.locales, locale)
+    ? locale
+    : routing.defaultLocale;
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={safeLocale} suppressHydrationWarning>
       <head>
         <title>{siteConfig.name}</title>
         <link
