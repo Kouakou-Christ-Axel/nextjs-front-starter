@@ -1,15 +1,20 @@
 // Typed env access. Schema: ../.env.schema — Types: ../env.d.ts
-// (auto-generated — run `bunx varlock typegen` or rely on the Next.js plugin).
+// (auto-generated — run `pnpm exec varlock typegen` or rely on the plugin).
 //
-// Why this is not a plain `export { ENV as env } from 'varlock/env'`:
-// varlock injects values into the client bundle through a Webpack DefinePlugin.
-// Next.js 16 builds with Turbopack by default, where that plugin does NOT run,
-// so `ENV.NEXT_PUBLIC_*` is `undefined` in the browser — which silently breaks
-// every client-side `fetch` (e.g. requests hit `undefined/auth/me`).
+// varlock is wired in the official way: the `@next/env` override in
+// pnpm-workspace.yaml + `varlockNextConfigPlugin` in next.config.ts load and
+// validate the .env files. That makes the typed `ENV` available **server-side**.
 //
-// Fix: on the server we read varlock's fully-initialized `ENV`; on the client we
-// fall back to `process.env.NEXT_PUBLIC_*`, which Next.js statically replaces at
-// build time under both Webpack and Turbopack.
+// Client-side, however, varlock's resolved values are NOT inlined into the
+// Turbopack browser chunks (verified by inspecting `.next/static` after a build:
+// `ENV.*` values appear only in server chunks). Relying on `ENV` in the browser
+// would yield `undefined` and silently break every client `fetch`
+// (requests would hit `undefined/...`).
+//
+// So this module reads from the source that is reliably available on each side:
+//   - server: varlock's `ENV` (typed, validated)
+//   - client: `process.env.NEXT_PUBLIC_*`, which Next.js statically replaces at
+//     build time under both Webpack and Turbopack.
 //
 // IMPORTANT: each `NEXT_PUBLIC_*` variable must be accessed below as a *literal*
 // member expression (`process.env.NEXT_PUBLIC_FOO`). A dynamic lookup such as

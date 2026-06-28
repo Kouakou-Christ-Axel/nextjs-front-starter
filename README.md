@@ -20,37 +20,39 @@ Starter Next.js perso, pensé pour démarrer vite un nouveau projet entre potes 
 
 ## Stack
 
-| Domaine        | Choix                                                             |
-| -------------- | ----------------------------------------------------------------- |
-| Framework      | Next.js 16 (App Router) + React 19                                |
-| Runtime        | Bun                                                               |
-| Langage        | TypeScript 5                                                      |
-| Styling        | Tailwind CSS 4 + `tw-animate-css`                                 |
-| UI             | shadcn/ui (Radix) + HeroUI + registry maison `animate-ui`         |
-| Animations     | Framer Motion / Motion                                            |
-| Formulaires    | React Hook Form + Zod                                             |
-| Data fetching  | TanStack Query v5 + wrapper `fetch` maison (`lib/api-client.ts`)  |
-| i18n           | next-intl (FR par défaut, EN dispo)                               |
-| Thème          | next-themes (light / dark)                                        |
-| Toasts         | Sonner                                                            |
-| Query string   | Nuqs                                                              |
-| Validation env | [varlock](https://varlock.dev) (`.env.schema` + `@env-spec`)      |
-| Lint / Format  | ESLint 9 (flat config) + Prettier + `prettier-plugin-tailwindcss` |
-| Git hooks      | Husky + lint-staged                                               |
+| Domaine         | Choix                                                             |
+| --------------- | ----------------------------------------------------------------- |
+| Framework       | Next.js 16 (App Router) + React 19                                |
+| Runtime         | Node.js ≥ 22                                                      |
+| Package manager | pnpm ≥ 10 (corepack)                                              |
+| Langage         | TypeScript 5                                                      |
+| Styling         | Tailwind CSS 4 + `tw-animate-css`                                 |
+| UI              | shadcn/ui (Radix) + HeroUI + registry maison `animate-ui`         |
+| Animations      | Framer Motion / Motion                                            |
+| Formulaires     | React Hook Form + Zod                                             |
+| Data fetching   | TanStack Query v5 + wrapper `fetch` maison (`lib/api-client.ts`)  |
+| i18n            | next-intl (FR par défaut, EN dispo)                               |
+| Thème           | next-themes (light / dark)                                        |
+| Toasts          | Sonner                                                            |
+| Query string    | Nuqs                                                              |
+| Validation env  | [varlock](https://varlock.dev) (`.env.schema` + `@env-spec`)      |
+| Lint / Format   | ESLint 9 (flat config) + Prettier + `prettier-plugin-tailwindcss` |
+| Git hooks       | Husky + lint-staged                                               |
 
 Pas d'ORM, pas de handler API dans ce repo : c'est un **front pur** qui tape sur un backend HTTP externe.
 
 ## Prérequis
 
-- [Bun](https://bun.sh/) ≥ 1.1 (le projet est câblé sur Bun, `bun --bun next dev`)
+- [Node.js](https://nodejs.org/) ≥ 22 (requis par varlock)
+- [pnpm](https://pnpm.io/) ≥ 10 — `corepack enable` suffit (le `packageManager` est épinglé dans `package.json`)
 - Un backend qui expose au minimum les endpoints `/auth/*` listés plus bas
 
 ## Démarrage rapide
 
 ```bash
-bun install
-# Crée .env.local en reprenant les valeurs de .env.schema
-bun run dev                      # http://localhost:3000
+pnpm install
+# Optionnel : crée .env.local pour surcharger les valeurs de .env.schema
+pnpm dev                         # http://localhost:3000
 ```
 
 Le site redirige automatiquement vers `/fr` (locale par défaut).
@@ -64,7 +66,9 @@ La source de vérité est **`.env.schema`** (format [varlock](https://varlock.de
 NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
 ```
 
-Pour surcharger en local, crée un `.env.local` (gitignoré) avec les mêmes clés. Le fichier `env.d.ts` (auto-généré par `bunx varlock typegen` ou par le plugin Next) donne le typage à l'accès via `ENV` ou `env`.
+`.env.schema` **est** le modèle d'environnement versionné — il documente chaque variable (type, obligatoire, sensibilité, valeur par défaut). Pas besoin de `.env.example` : il ferait doublon et dériverait. Pour surcharger en local, crée un `.env.local` (gitignoré) avec les mêmes clés. Le fichier `env.d.ts` (auto-généré par `pnpm exec varlock typegen` ou par le plugin Next) donne le typage à l'accès via `ENV` ou `env`.
+
+varlock est branché de la manière officielle : l'override `@next/env` dans `pnpm-workspace.yaml` + `varlockNextConfigPlugin` dans `next.config.ts` chargent et valident les `.env`. C'est l'override qui fait que `next dev`/`next build` fonctionnent sans wrapper `varlock run`.
 
 Accès typé dans le code :
 
@@ -75,16 +79,17 @@ env.NEXT_PUBLIC_BACKEND_URL; // string, garanti non-vide
 
 Si une variable `@required` manque au build/dev, varlock plante avec un message clair.
 
-> **Note Turbopack** : `config/env.ts` n'est pas un simple ré-export de `varlock/env`. varlock n'injecte les valeurs côté navigateur que via un DefinePlugin Webpack, qui ne tourne pas sous Turbopack (le bundler par défaut de Next.js 16) — `NEXT_PUBLIC_*` y serait `undefined` côté client. Le module utilise donc un `Proxy` qui retombe sur `process.env.NEXT_PUBLIC_*` dans le navigateur. Toute nouvelle variable publique doit être ajoutée au type `AppEnv` et à la branche client du proxy (voir `docs/ARCHITECTURE.md` §11).
+> **Note Turbopack** : `config/env.ts` n'est pas un simple ré-export de `varlock/env`. Côté serveur, le `ENV` typé de varlock est utilisé tel quel. Côté navigateur en revanche, les valeurs résolues de varlock ne sont **pas** inlinées dans les chunks Turbopack (vérifiable en inspectant `.next/static` après un build) — `ENV.*` y serait `undefined` et casserait chaque `fetch` client. Le module utilise donc un `Proxy` qui retombe sur `process.env.NEXT_PUBLIC_*` dans le navigateur (que Next.js remplace statiquement, Webpack comme Turbopack). Toute nouvelle variable publique doit être ajoutée au type `AppEnv` et à la branche client du proxy (voir `docs/ARCHITECTURE.md` §11).
 
 ## Scripts
 
 ```bash
-bun run dev       # dev server
-bun run build     # build prod
-bun run start     # run build prod
-bun run lint      # ESLint
-bun run format    # Prettier --write
+pnpm dev          # dev server
+pnpm build        # build prod
+pnpm start        # run build prod
+pnpm lint         # ESLint
+pnpm format       # Prettier --write
+pnpm test:run     # Vitest (CI)
 ```
 
 Le hook `pre-commit` (Husky) lance `lint-staged` : Prettier + ESLint sur les fichiers modifiés.
@@ -318,4 +323,3 @@ Les cookies sont envoyés avec `credentials: 'include'` → côté backend il fa
 - [ ] Page 404 plus soignée.
 - [ ] Skeleton loaders génériques dans `components/ui/`.
 - [ ] Helper `api.withSchema(zodSchema)` pour valider les réponses backend au runtime.
-- [ ] Template d'`.env.example` enrichi (au fur et à mesure des features).

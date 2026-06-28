@@ -510,7 +510,7 @@ Ordre d'empilement dans `app/[locale]/layout.tsx` :
 
 ## 11. Validation d'environnement
 
-La source de vérité est **`.env.schema`** (format [varlock](https://varlock.dev) / @env-spec). Chaque variable y déclare son type, sa sensibilité et sa valeur par défaut :
+La source de vérité est **`.env.schema`** (format [varlock](https://varlock.dev) / @env-spec). C'est aussi le **modèle d'environnement versionné** — il remplace un `.env.example` (qui ferait doublon et dériverait). Chaque variable y déclare son type, sa sensibilité et sa valeur par défaut :
 
 ```
 # @defaultRequired=infer @defaultSensitive=false
@@ -521,7 +521,12 @@ La source de vérité est **`.env.schema`** (format [varlock](https://varlock.de
 NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
 ```
 
-Le plugin `varlockNextConfigPlugin` (dans `next.config.ts`) charge et valide les variables au démarrage dev/build, et le décorateur `@generateTypes` produit `env.d.ts` (augmentation du module `varlock/env` + `ProcessEnv` globale).
+L'intégration varlock se fait de la manière **officielle** ([doc](https://varlock.dev/integrations/nextjs/)), en deux morceaux :
+
+1. l'**override `@next/env`** dans `pnpm-workspace.yaml` (`'@next/env': 'npm:@varlock/nextjs-integration@^1.1.3'`) — remplace le chargeur `.env` interne de Next par celui de varlock. C'est ce qui charge/valide les variables et fait que `next dev`/`next build` fonctionnent **sans** wrapper `varlock run` (au démarrage, la bannière `✨ loaded by varlock ✨` confirme que l'override est actif) ;
+2. le plugin `varlockNextConfigPlugin` (dans `next.config.ts`) qui active les fonctions de sécurité (redaction, scrub des sourcemaps, bundling de `ENV`).
+
+Le décorateur `@generateTypes` produit `env.d.ts` (augmentation du module `varlock/env` + `ProcessEnv` globale).
 
 Accès typé dans le code :
 
@@ -534,14 +539,14 @@ env.NEXT_PUBLIC_BACKEND_URL; // string, garanti non-vide par @required
 
 > ⚠️ **Pourquoi `config/env.ts` n'est pas un simple `export { ENV as env } from 'varlock/env'`**
 >
-> varlock injecte les valeurs dans le bundle navigateur via un **DefinePlugin Webpack**. Or **Next.js 16 compile par défaut avec Turbopack**, où ce plugin **ne s'exécute pas** : `ENV.NEXT_PUBLIC_*` est alors `undefined` **côté client**, ce qui casse silencieusement chaque `fetch` (les requêtes partent vers `undefined/...`).
+> Même avec l'override et le plugin en place, les valeurs résolues de varlock ne sont **pas inlinées dans les chunks navigateur sous Turbopack** (constat vérifié : après un `build`, les valeurs `ENV.*` n'apparaissent que dans `.next/server`, jamais dans `.next/static`). Côté client, `ENV.NEXT_PUBLIC_*` serait donc `undefined`, ce qui casse silencieusement chaque `fetch` (les requêtes partent vers `undefined/...`).
 >
-> `config/env.ts` contourne ça avec un `Proxy` : côté serveur il lit le `ENV` de varlock ; côté client il retombe sur `process.env.NEXT_PUBLIC_*`, que Next.js remplace statiquement à la compilation (Webpack **et** Turbopack). **Important** : chaque variable `NEXT_PUBLIC_*` doit y être accédée en _littéral_ (`process.env.NEXT_PUBLIC_FOO`) — un accès dynamique `process.env[clé]` n'est **pas** remplacé. Quand tu ajoutes une variable publique, ajoute-la au type `AppEnv` et à la branche client du proxy.
+> `config/env.ts` lit donc, de chaque côté, la source réellement disponible : côté serveur le `ENV` de varlock (typé, validé) ; côté client `process.env.NEXT_PUBLIC_*`, que Next.js remplace statiquement à la compilation (Webpack **et** Turbopack). **Important** : chaque variable `NEXT_PUBLIC_*` doit y être accédée en _littéral_ (`process.env.NEXT_PUBLIC_FOO`) — un accès dynamique `process.env[clé]` n'est **pas** remplacé. Quand tu ajoutes une variable publique, ajoute-la au type `AppEnv` et à la branche client du proxy.
 
 **Ajouter une variable** :
 
 1. La déclarer dans `.env.schema` avec les bons décorateurs (`@required`, `@type=...`, `@sensitive` si secret).
-2. Lancer `bunx varlock typegen` pour rafraîchir `env.d.ts` (le plugin le fait au build, mais explicit c'est plus sûr en dev).
+2. Lancer `pnpm exec varlock typegen` pour rafraîchir `env.d.ts` (le plugin le fait au build, mais explicit c'est plus sûr en dev).
 3. Si elle est `@required` sans default, la renseigner dans `.env.local`.
 4. Si c'est une variable **`NEXT_PUBLIC_*`** (lue côté client), l'ajouter au type `AppEnv` **et** à la branche client du `Proxy` dans `config/env.ts` (cf. l'encadré Turbopack ci-dessus).
 
