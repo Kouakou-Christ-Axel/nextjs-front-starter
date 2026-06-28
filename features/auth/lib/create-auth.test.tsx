@@ -34,6 +34,19 @@ function makeWrapper() {
   };
 }
 
+function makeWrapperWithClient() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+  return { wrapper, queryClient };
+}
+
 function makeStrategy(overrides: Partial<AuthStrategy> = {}): AuthStrategy {
   const noopUser: IUser = {
     id: '1',
@@ -201,6 +214,76 @@ describe('createAuth > useLogout', () => {
     });
 
     expect(toast.error).not.toHaveBeenCalledWith('backend rate limit msg');
+  });
+});
+
+describe('createAuth > cache wipe at auth boundary', () => {
+  const userKey = ['authenticated-user'];
+  const abilitiesKey = ['auth', 'abilities'];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('logout removes every cached query and nulls the user', async () => {
+    const { useLogout } = createAuth({ mock: makeStrategy() }, 'mock');
+    const { wrapper, queryClient } = makeWrapperWithClient();
+
+    queryClient.setQueryData(userKey, { id: 'old' });
+    queryClient.setQueryData(abilitiesKey, { sentinel: true });
+
+    const { result } = renderHook(() => useLogout(), { wrapper });
+    result.current.mutate();
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(queryClient.getQueryData(abilitiesKey)).toBeUndefined();
+    expect(queryClient.getQueryData(userKey)).toBeNull();
+  });
+
+  it('login wipes stale cache then seeds the new user', async () => {
+    const newUser: IUser = {
+      id: '2',
+      email: 'new@b.c',
+      name: 'New',
+      authorizations: [],
+      createdAt: '',
+      updatedAt: '',
+    };
+    const strategy = makeStrategy({
+      login: vi.fn().mockResolvedValue(newUser),
+    });
+    const { useLogin } = createAuth({ mock: strategy }, 'mock');
+    const { wrapper, queryClient } = makeWrapperWithClient();
+
+    queryClient.setQueryData(userKey, { id: 'old' });
+    queryClient.setQueryData(abilitiesKey, { sentinel: true });
+
+    const { result } = renderHook(() => useLogin(), { wrapper });
+    result.current.mutate({ email: 'new@b.c', password: '12345678' });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(queryClient.getQueryData(abilitiesKey)).toBeUndefined();
+    expect(queryClient.getQueryData(userKey)).toEqual(newUser);
+  });
+
+  it('logout wipes the cache even when the logout request fails', async () => {
+    const strategy = makeStrategy({
+      logout: vi.fn().mockRejectedValue(new ApiError(500, 'Logout failed')),
+    });
+    const { useLogout } = createAuth({ mock: strategy }, 'mock');
+    const { wrapper, queryClient } = makeWrapperWithClient();
+
+    queryClient.setQueryData(abilitiesKey, { sentinel: true });
+
+    const { result } = renderHook(() => useLogout(), { wrapper });
+    result.current.mutate();
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(queryClient.getQueryData(abilitiesKey)).toBeUndefined();
+    expect(queryClient.getQueryData(userKey)).toBeNull();
   });
 });
 
