@@ -85,15 +85,16 @@ export function createAuth(
 
   const useLogin = () => {
     const queryClient = useQueryClient();
-    const setUser = React.useCallback(
-      (data: IUser) => queryClient.setQueryData(userKey, data),
-      [queryClient]
-    );
 
     return useMutation({
       mutationFn: strategy.login,
       onSuccess: (data) => {
-        setUser(data);
+        // Start the new session from a clean slate: drop any cache left by a
+        // previous (or silently expired) session before seeding the new user.
+        // Without this, logging in as a different identity would inherit the
+        // previous one's cached queries (incl. CASL abilities) until gcTime.
+        queryClient.removeQueries();
+        queryClient.setQueryData(userKey, data);
       },
       onError: makeAuthOnError('Login error', {
         genericMessage: GENERIC_LOGIN_ERROR,
@@ -104,15 +105,19 @@ export function createAuth(
 
   const useLogout = () => {
     const queryClient = useQueryClient();
-    const clearUser = React.useCallback(
-      () => queryClient.setQueryData(userKey, null),
-      [queryClient]
-    );
 
     return useMutation({
       mutationFn: strategy.logout,
-      onSuccess: () => {
-        clearUser();
+      onSettled: () => {
+        // Wipe the whole query cache so the next identity never inherits this
+        // one's data (user, CASL abilities, lists…). removeQueries (not clear)
+        // leaves the mutation cache intact. Clear BEFORE writing the null user
+        // so the user observer resolves deterministically to null and
+        // UserClientProvider redirects to /login. onSettled (not onSuccess):
+        // wipe even if the logout request fails — the user must never be left
+        // with another identity's cache.
+        queryClient.removeQueries();
+        queryClient.setQueryData(userKey, null);
       },
       onError: makeAuthOnError('Logout error', {
         fallback: 'An error occurred during logout.',
