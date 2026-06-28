@@ -5,7 +5,6 @@ import { ApiError } from '@/lib/api-error';
 describe('handleApiError', () => {
   it('extracts message, status and body.errors from an ApiError', () => {
     const apiError = new ApiError(422, 'Validation failed', {
-      data: null as never,
       errors: { email: ['emailInvalid'] },
     });
 
@@ -26,6 +25,27 @@ describe('handleApiError', () => {
     expect(result.message).toBe('Server down');
     expect(result.status).toBe(500);
     expect(result.errors).toBeUndefined();
+    expect(result.messages).toBeUndefined();
+  });
+
+  it('exposes message[] from a NestJS validation body', () => {
+    const apiError = new ApiError(
+      422,
+      'name must not be empty · email is invalid',
+      {
+        message: ['name must not be empty', 'email is invalid'],
+        error: 'Unprocessable Entity',
+        statusCode: 422,
+      }
+    );
+
+    const result = handleApiError(apiError);
+
+    expect(result.status).toBe(422);
+    expect(result.messages).toEqual([
+      'name must not be empty',
+      'email is invalid',
+    ]);
   });
 
   it('extracts message from a standard Error', () => {

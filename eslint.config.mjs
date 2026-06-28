@@ -7,6 +7,18 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   prettier,
+  // animate-ui sont des primitives vendored (copiées depuis le registry, comme
+  // shadcn/ui) — on ne les édite pas à la main. Les règles react-hooks récentes
+  // (ère React Compiler) signalent des patterns internes à ces composants ;
+  // on les neutralise uniquement ici pour ne pas faire échouer le lint du code
+  // applicatif. À retirer si on réécrit ces composants nous-mêmes.
+  {
+    files: ['components/animate-ui/**'],
+    rules: {
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/refs': 'off',
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

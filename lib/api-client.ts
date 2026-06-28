@@ -2,7 +2,7 @@ import { AUTH_COOKIE_NAMES } from '@/config/auth';
 import { env } from '@/config/env';
 import { ApiError } from '@/lib/api-error';
 import { appCsrfStore, fetchCsrfToken, isMutatingMethod } from '@/lib/csrf';
-import { ApiResponse } from '@/types/api';
+import { IApiErrorBody } from '@/types/api';
 
 type RequestBody = Record<string, unknown>;
 
@@ -53,13 +53,32 @@ export function getServerCookies() {
   });
 }
 
+/**
+ * Best-effort extraction of a human-readable message from an error body.
+ * Handles both `{ message: string }` and `{ message: string[] }`
+ * (NestJS/class-validator returns an array of validation messages).
+ */
+function extractErrorMessage(body: unknown, fallback: string): string {
+  if (body && typeof body === 'object' && 'message' in body) {
+    const message = (body as { message?: unknown }).message;
+    if (typeof message === 'string' && message.length > 0) return message;
+    if (Array.isArray(message) && message.length > 0) {
+      const joined = message.filter((m) => typeof m === 'string').join(' · ');
+      if (joined.length > 0) return joined;
+    }
+  }
+  return fallback;
+}
+
 /*
- * Core function to make API requests
+ * Core function to make API requests.
+ * Returns the raw response body cast as T — no envelope unwrapping.
+ * Callers MUST type T to match the actual backend response shape.
  */
 async function fetchApi<T>(
   url: string,
   options: RequestOptions = {}
-): Promise<ApiResponse<T>> {
+): Promise<T> {
   const {
     method = 'GET',
     headers = {},
@@ -113,7 +132,7 @@ async function fetchApi<T>(
       next,
     });
 
-    let responseBody: ApiResponse<T> | null;
+    let responseBody: unknown;
 
     try {
       responseBody = await response.json();
@@ -122,14 +141,14 @@ async function fetchApi<T>(
     }
 
     if (!response.ok) {
-      throw new ApiError<T>(
+      throw new ApiError(
         response.status,
-        responseBody?.message || response.statusText,
-        responseBody ?? undefined
+        extractErrorMessage(responseBody, response.statusText),
+        (responseBody as IApiErrorBody | undefined) ?? undefined
       );
     }
 
-    return responseBody as ApiResponse<T>;
+    return responseBody as T;
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.status === 403 && env.NEXT_PUBLIC_CSRF_ENABLED) {
@@ -140,7 +159,7 @@ async function fetchApi<T>(
     if (process.env.NODE_ENV !== 'production') {
       console.error(error);
     }
-    throw new ApiError<T>(
+    throw new ApiError(
       500,
       (error as Error).message || 'An unknown error occurred',
       undefined
@@ -149,34 +168,36 @@ async function fetchApi<T>(
 }
 
 /*
- * API client with methods for making HTTP requests
+ * API client with methods for making HTTP requests.
+ * Each method returns the raw response body typed as T.
+ * The client is envelope-agnostic — callers describe what the backend actually returns.
  */
 export const api = {
-  get<T>(url: string, options?: RequestOptions): Promise<ApiResponse<T>> {
+  get<T>(url: string, options?: RequestOptions): Promise<T> {
     return fetchApi<T>(url, { ...options, method: 'GET' });
   },
   post<T>(
     url: string,
     body?: RequestBody,
     options?: RequestOptions
-  ): Promise<ApiResponse<T>> {
+  ): Promise<T> {
     return fetchApi<T>(url, { ...options, method: 'POST', body });
   },
   put<T>(
     url: string,
     body?: RequestBody,
     options?: RequestOptions
-  ): Promise<ApiResponse<T>> {
+  ): Promise<T> {
     return fetchApi<T>(url, { ...options, method: 'PUT', body });
   },
   patch<T>(
     url: string,
     body?: RequestBody,
     options?: RequestOptions
-  ): Promise<ApiResponse<T>> {
+  ): Promise<T> {
     return fetchApi<T>(url, { ...options, method: 'PATCH', body });
   },
-  delete<T>(url: string, options?: RequestOptions): Promise<ApiResponse<T>> {
+  delete<T>(url: string, options?: RequestOptions): Promise<T> {
     return fetchApi<T>(url, { ...options, method: 'DELETE' });
   },
 };

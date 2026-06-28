@@ -1,3 +1,14 @@
+# Requis par l'override @next/env ci-dessous, même hors monorepo (cf. doc varlock).
+packages:
+  - .
+
+# Intègre varlock en remplaçant le @next/env interne de Next.js par le drop-in
+# de varlock. C'est ce qui charge/valide les .env via .env.schema et permet
+# l'accès typé `env`/`ENV` côté serveur ET client (Webpack comme Turbopack).
+# https://varlock.dev/integrations/nextjs/
+overrides:
+  '@next/env': 'npm:@varlock/nextjs-integration@^1.1.3'
+
 onlyBuiltDependencies:
   - '@parcel/watcher'
   - '@swc/core'

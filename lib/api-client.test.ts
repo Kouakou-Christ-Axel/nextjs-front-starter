@@ -11,6 +11,59 @@ describe('api-client', () => {
     vi.resetModules();
   });
 
+  describe('response shape & error extraction', () => {
+    it('returns the raw response body (no envelope unwrapping)', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 1, name: 'Ada' }),
+      }) as unknown as typeof fetch;
+
+      const { api } = await import('@/lib/api-client');
+      const result = await api.get<{ id: number; name: string }>('/users/1');
+
+      expect(result).toEqual({ id: 1, name: 'Ada' });
+    });
+
+    it('joins a NestJS message[] into the ApiError message', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 422,
+        statusText: 'Unprocessable Entity',
+        json: async () => ({
+          message: ['name must not be empty', 'email is invalid'],
+          error: 'Unprocessable Entity',
+          statusCode: 422,
+        }),
+      }) as unknown as typeof fetch;
+
+      const { api } = await import('@/lib/api-client');
+      const { ApiError } = await import('@/lib/api-error');
+
+      await expect(api.post('/users', {})).rejects.toBeInstanceOf(ApiError);
+      await expect(api.post('/users', {})).rejects.toMatchObject({
+        status: 422,
+        message: 'name must not be empty · email is invalid',
+      });
+    });
+
+    it('falls back to statusText when the error body has no message', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        json: async () => ({}),
+      }) as unknown as typeof fetch;
+
+      const { api } = await import('@/lib/api-client');
+
+      await expect(api.get('/boom')).rejects.toMatchObject({
+        status: 500,
+        message: 'Internal Server Error',
+      });
+    });
+  });
+
   describe('request logging (#10)', () => {
     it('does not log request info in production', async () => {
       vi.stubEnv('NODE_ENV', 'production');
