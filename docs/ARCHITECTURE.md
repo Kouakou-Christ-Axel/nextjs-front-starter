@@ -83,7 +83,7 @@ Ce repo est **100 % front**. Pas de Route Handler (`app/api/…`), pas d'ORM, pa
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    TRANSPORT                                    │
-│  lib/api-client.ts  (fetch wrapper, ApiResponse, ApiError)      │
+│  lib/api-client.ts  (fetch wrapper, corps brut T, ApiError)    │
 └────────────────────────────┬────────────────────────────────────┘
                              │ HTTP
                              ▼
@@ -114,7 +114,7 @@ Ce repo est **100 % front**. Pas de Route Handler (`app/api/…`), pas d'ORM, pa
 | **Hooks génériques**   | `hooks/`                                     | Pas liés à un domaine (use-mobile, use-is-in-view)     |
 | **Config**             | `config/`                                    | `env.ts`, `site-config.ts`, `navbar-config.ts`         |
 | **i18n**               | `i18n/`                                      | Routing, loader, messages JSON                         |
-| **Types globaux**      | `types/`                                     | `ApiResponse`, etc.                                    |
+| **Types globaux**      | `types/`                                     | `IApiErrorBody`, etc.                                  |
 | **Middleware**         | `proxy.ts`                                   | next-intl (peut être étendu, cf. roadmap auth serveur) |
 
 ---
@@ -143,7 +143,7 @@ Scénario : l'utilisateur clique sur "Se connecter" dans `LoginForm`.
                              ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 3. jwtStrategy.login (features/auth/strategies/)            │
-│    return (await loginUserRequest(credentials)).data        │
+│    return loginUserRequest(credentials)                     │
 └────────────────────────────┬────────────────────────────────┘
                              │
                              ▼
@@ -159,7 +159,7 @@ Scénario : l'utilisateur clique sur "Se connecter" dans `LoginForm`.
 │      method: 'POST', credentials: 'include', body: …        │
 │    })                                                       │
 │    si !ok → throw new ApiError(status, message, body)       │
-│    sinon → return ApiResponse<IUser>                        │
+│    sinon → return IUser (corps brut, aucune enveloppe)      │
 └────────────────────────────┬────────────────────────────────┘
                              │
                              ▼
@@ -213,11 +213,18 @@ Sous `app/[locale]/`, on a deux groupes (parenthèses = n'apparaissent pas dans 
 **`UserClientProvider`** :
 
 ```tsx
-const { data: user, isLoading } = useUser();
-if (!user && !isLoading) redirect('/login');
-if (isLoading) return <Loading />;
-return children;
+const { data: user, isLoading, isError, error } = useUser();
+
+// Un 401 est un état *confirmé* de non-authentification ; toute autre erreur
+// (réseau, preflight CORS, 5xx) est transiente.
+const isAuthError = error instanceof ApiError && error.status === 401;
+const needsRedirect = !isLoading && (isAuthError || (!isError && !user));
+
+// → redirige vers /login?returnTo=<chemin courant> uniquement si needsRedirect
+// → erreur transiente : on affiche un message, on ne bounce PAS vers /login
 ```
+
+> Garde-fou contre un bug rencontré en implémentation : l'ancienne version redirigeait dès que `!user && !isLoading`, ce qui éjectait un utilisateur authentifié vers `/login` au moindre rechargement bancal (erreur réseau / 5xx). On distingue désormais le 401 confirmé de l'erreur transiente, et on propage `returnTo` pour revenir là où on était après reconnexion.
 
 ⚠️ **Limitation actuelle** : la protection est **100 % côté client**. Un utilisateur qui désactive JS accède au HTML initial. À durcir avec un middleware serveur (voir Roadmap du README).
 
@@ -249,17 +256,15 @@ export interface AuthStrategy {
 ```ts
 // features/auth/strategies/jwt.strategy.ts
 export const jwtStrategy: AuthStrategy = {
-  getUser: async () => (await getUserRequest()).data,
-  login: async (c) => (await loginUserRequest(c)).data,
-  register: async (c) => (await registerUserRequest(c)).data,
-  logout: async () => {
-    await logoutUserRequest();
-  },
-  refresh: async () => (await getRefreshUserRequest()).data,
+  getUser: getUserRequest,
+  login: loginUserRequest,
+  register: registerUserRequest,
+  logout: logoutUserRequest,
+  refresh: getRefreshUserRequest,
 };
 ```
 
-Chaque méthode est un adaptateur mince : elle appelle la `request` et extrait `.data` de l'`ApiResponse`.
+Chaque `request` retourne déjà le type métier (`IUser`, `void`…) puisque le client est agnostique vis-à-vis de l'enveloppe ; la stratégie n'est plus qu'un simple branchement, sans extraction de `.data`.
 
 ### 6.4 La factory
 
@@ -335,23 +340,35 @@ Aucun composant ne change.
    - Client : `credentials: 'include'`.
    - Serveur (RSC, Server Actions) : lit `cookies()` de `next/headers` et reforward dans le header `Cookie` (voir `getServerCookies`).
 3. **Query params** : `api.get('/users', { params: { page: 1, limit: undefined } })` → `?page=1` (filtre `undefined`/`null`).
-4. **Enveloppe typée** : toutes les réponses backend sont parsées en `ApiResponse<T> = { data: T, message?, errors? }`.
-5. **Erreurs structurées** : `!response.ok` → `throw new ApiError<T>(status, message, body)`.
+4. **Réponse brute typée** : `api` retourne le corps JSON **tel quel**, typé `T`. Aucune enveloppe `{ data }` n'est imposée — chaque `request` décrit la forme exacte renvoyée par le backend.
+5. **Erreurs structurées** : `!response.ok` → `throw new ApiError(status, message, body)`. Le `message` est extrait du body de façon robuste, y compris quand le backend renvoie `message: string[]` (validation NestJS/class-validator).
 6. **Cache Next.js** : expose `cache` (`'no-store' | 'force-cache' | ...`) et `next` (pour `revalidateTag`).
 
 ### 7.2 Contrat de réponse backend
 
-Le backend **doit** répondre selon la forme :
+Le client est **agnostique vis-à-vis de l'enveloppe** : il n'impose aucune forme aux réponses de succès et retourne le corps JSON brut typé `T`. Chaque `request` déclare ce que le backend renvoie réellement :
 
 ```ts
-interface ApiResponse<T = unknown> {
-  data: T;
-  message?: string;
-  errors?: Record<string, string[]>; // validations
-}
+// le backend renvoie l'objet utilisateur directement
+api.get<IUser>('/auth/me');
+
+// le backend enveloppe la liste dans { items, total } → on le décrit tel quel
+api.get<{ items: IUser[]; total: number }>('/users');
 ```
 
-Si le backend ne suit pas ce contrat, il faut soit l'adapter, soit modifier `api-client.ts` pour normaliser.
+> Historique : une version antérieure du template forçait toute réponse dans `ApiResponse<T> = { data, message, errors }`, obligeant chaque appelant à faire `.data`. La première implémentation réelle a montré que peu de backends respectent ce contrat — le client est désormais agnostique.
+
+Seules les **erreurs** sont normalisées, via `IApiErrorBody` (voir §8) :
+
+```ts
+interface IApiErrorBody {
+  message?: string | string[]; // string[] pour la validation NestJS
+  error?: string;
+  statusCode?: number;
+  errors?: Record<string, string[]>; // validations champ par champ
+  [key: string]: unknown;
+}
+```
 
 ### 7.3 Contrat cookies JWT côté backend
 
@@ -419,12 +436,12 @@ La parade retenue est le **double-submit cookie** : le backend pose un cookie CS
 
 ## 8. Gestion des erreurs
 
-### 8.1 `ApiError<T>`
+### 8.1 `ApiError`
 
 ```ts
-class ApiError<T = unknown> extends Error {
+class ApiError extends Error {
   status: number;
-  body?: ApiResponse<T>; // contient errors (validation), message…
+  body?: IApiErrorBody; // contient errors (validation), message (string | string[])…
 }
 ```
 
@@ -509,17 +526,24 @@ Le plugin `varlockNextConfigPlugin` (dans `next.config.ts`) charge et valide les
 Accès typé dans le code :
 
 ```ts
-import { env } from '@/config/env'; // ré-export de ENV depuis 'varlock/env'
+import { env } from '@/config/env';
 env.NEXT_PUBLIC_BACKEND_URL; // string, garanti non-vide par @required
 ```
 
-**Conséquence** : si une variable `@required` manque, le build/dev plante avec un message clair. **Toujours importer `env` depuis `@/config/env`** (ou `ENV` depuis `varlock/env`) — jamais `process.env.X` directement dans le code applicatif.
+**Conséquence** : si une variable `@required` manque, le build/dev plante avec un message clair. **Toujours importer `env` depuis `@/config/env`** — jamais `process.env.X` directement dans le code applicatif.
+
+> ⚠️ **Pourquoi `config/env.ts` n'est pas un simple `export { ENV as env } from 'varlock/env'`**
+>
+> varlock injecte les valeurs dans le bundle navigateur via un **DefinePlugin Webpack**. Or **Next.js 16 compile par défaut avec Turbopack**, où ce plugin **ne s'exécute pas** : `ENV.NEXT_PUBLIC_*` est alors `undefined` **côté client**, ce qui casse silencieusement chaque `fetch` (les requêtes partent vers `undefined/...`).
+>
+> `config/env.ts` contourne ça avec un `Proxy` : côté serveur il lit le `ENV` de varlock ; côté client il retombe sur `process.env.NEXT_PUBLIC_*`, que Next.js remplace statiquement à la compilation (Webpack **et** Turbopack). **Important** : chaque variable `NEXT_PUBLIC_*` doit y être accédée en _littéral_ (`process.env.NEXT_PUBLIC_FOO`) — un accès dynamique `process.env[clé]` n'est **pas** remplacé. Quand tu ajoutes une variable publique, ajoute-la au type `AppEnv` et à la branche client du proxy.
 
 **Ajouter une variable** :
 
 1. La déclarer dans `.env.schema` avec les bons décorateurs (`@required`, `@type=...`, `@sensitive` si secret).
 2. Lancer `bunx varlock typegen` pour rafraîchir `env.d.ts` (le plugin le fait au build, mais explicit c'est plus sûr en dev).
 3. Si elle est `@required` sans default, la renseigner dans `.env.local`.
+4. Si c'est une variable **`NEXT_PUBLIC_*`** (lue côté client), l'ajouter au type `AppEnv` **et** à la branche client du `Proxy` dans `config/env.ts` (cf. l'encadré Turbopack ci-dessus).
 
 ### 11.1 Secrets : server vs client
 

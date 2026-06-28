@@ -73,6 +73,13 @@ export function createAuth(
         }
       },
       staleTime: 1000 * 60,
+      // Survive transient errors (network blips, CORS preflight, 5xx) but never
+      // retry on a confirmed auth failure — a 401 means the refresh above already
+      // failed, so retrying only delays the redirect to login.
+      retry: (failureCount, error) => {
+        if (error instanceof ApiError && error.status === 401) return false;
+        return failureCount < 1;
+      },
     });
   };
 

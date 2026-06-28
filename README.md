@@ -75,6 +75,8 @@ env.NEXT_PUBLIC_BACKEND_URL; // string, garanti non-vide
 
 Si une variable `@required` manque au build/dev, varlock plante avec un message clair.
 
+> **Note Turbopack** : `config/env.ts` n'est pas un simple ré-export de `varlock/env`. varlock n'injecte les valeurs côté navigateur que via un DefinePlugin Webpack, qui ne tourne pas sous Turbopack (le bundler par défaut de Next.js 16) — `NEXT_PUBLIC_*` y serait `undefined` côté client. Le module utilise donc un `Proxy` qui retombe sur `process.env.NEXT_PUBLIC_*` dans le navigateur. Toute nouvelle variable publique doit être ajoutée au type `AppEnv` et à la branche client du proxy (voir `docs/ARCHITECTURE.md` §11).
+
 ## Scripts
 
 ```bash
@@ -113,7 +115,7 @@ nextjs-start/
 ├── hooks/                     # use-mobile, use-is-in-view
 ├── config/                    # env, site-config, navbar-config
 ├── i18n/                      # routing, request loader, messages (en/, fr/)
-├── types/                     # Types partagés (ApiResponse, …)
+├── types/                     # Types partagés (IApiErrorBody, …)
 └── proxy.ts                   # Middleware next-intl
 ```
 
@@ -154,7 +156,7 @@ const t = useTranslations('auth');
 On utilise les **route groups** d'App Router :
 
 - `app/[locale]/(public)/` : pas d'auth requise. Inclut `/login`, `/register`, la home.
-- `app/[locale]/(protected)/` : enveloppé dans `<UserClientProvider>` qui appelle `useUser()`. Si l'utilisateur n'est pas authentifié → `redirect('/login')`.
+- `app/[locale]/(protected)/` : enveloppé dans `<UserClientProvider>` qui appelle `useUser()`. Sur un **401 confirmé** (ou absence d'utilisateur sans erreur) → redirige vers `/login?returnTo=<chemin>`. Sur une **erreur transiente** (réseau, 5xx) il affiche un message au lieu de bouncer vers `/login`.
 
 La protection est **côté client** pour l'instant. Pour durcir, il faudra ajouter un middleware serveur (voir Roadmap).
 
@@ -217,11 +219,11 @@ L'auth est découplée pour pouvoir brancher plusieurs providers sans toucher à
 
 - préfixe chaque URL avec `NEXT_PUBLIC_BACKEND_URL`,
 - attache les cookies (cookies du navigateur côté client, `next/headers` côté serveur),
-- parse la réponse en `ApiResponse<T>` et throw `ApiError<T>` sur `!response.ok`,
+- retourne le corps JSON **brut** typé `T` (aucune enveloppe `{ data }` imposée) et throw `ApiError` sur `!response.ok` — avec extraction robuste du message, y compris `message: string[]` (validation NestJS),
 - supporte `params` (query string), `cache`, et `next` (ISR tags Next.js).
 
 ```ts
-const { data } = await api.get<IUser>('/auth/me');
+const user = await api.get<IUser>('/auth/me');
 ```
 
 ### 5. Endpoints backend attendus
@@ -267,7 +269,7 @@ Les cookies sont envoyés avec `credentials: 'include'` → côté backend il fa
 - **Nommage fichiers** : kebab-case (`login-form.tsx`), un composant par fichier.
 - **Features** : chaque domaine a sa pyramide `types → schemas → requests → strategies → lib (hooks)`.
 - **Formulaires** : toujours `react-hook-form` + `zodResolver` + composants `Form*` de `components/ui/form.tsx`.
-- **Erreurs API** : tout passe par `ApiError<T>` ; ne pas retourner de `null` silencieux.
+- **Erreurs API** : tout passe par `ApiError` ; ne pas retourner de `null` silencieux.
 - **i18n** : pas de texte hardcodé dans les composants "feature" — passer par `useTranslations`.
 
 ## Roadmap

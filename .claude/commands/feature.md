@@ -104,7 +104,7 @@ import { {camel}Keys } from './query-keys';
 export const use{Pascal}ListQuery = () =>
   useQuery({
     queryKey: {camel}Keys.list(),
-    queryFn: async () => (await get{Pascals}Request()).data,
+    queryFn: get{Pascals}Request,
   });
 ```
 
@@ -149,7 +149,7 @@ import { {camel}Keys } from './query-keys';
 export const use{Pascal}Query = (id: string) =>
   useQuery({
     queryKey: {camel}Keys.detail(id),
-    queryFn: async () => (await get{Pascal}Request(id)).data,
+    queryFn: () => get{Pascal}Request(id),
     enabled: !!id,
   });
 ```

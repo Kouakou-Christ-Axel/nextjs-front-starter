@@ -1,10 +1,10 @@
-import { ApiResponse } from '@/types/api';
+import { IApiErrorBody } from '@/types/api';
 
-export class ApiError<T = unknown> extends Error {
+export class ApiError extends Error {
   status: number;
-  body?: ApiResponse<T>;
+  body?: IApiErrorBody;
 
-  constructor(status: number, message: string, body?: ApiResponse<T>) {
+  constructor(status: number, message: string, body?: IApiErrorBody) {
     super(message);
     this.status = status;
     this.body = body;
