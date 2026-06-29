@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@heroui/navbar": "^2.2.27",
-    "@heroui/react": "^2.8.7",
+    "@heroui/react": "^3.2.1",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-dialog": "^1.1.15",
