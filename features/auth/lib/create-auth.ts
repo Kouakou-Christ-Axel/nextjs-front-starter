@@ -54,6 +54,9 @@ export function createAuth(
 
   const useUser = () => {
     const queryClient = useQueryClient();
+    // `strategy` est fixée une fois pour toutes par createAuth : elle ne peut pas
+    // changer entre deux rendus, donc inutile de l'inclure dans la clé.
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     return useQuery({
       queryKey: userKey,
       queryFn: async () => {

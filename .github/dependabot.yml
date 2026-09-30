@@ -1,29 +1,53 @@
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Europe/Paris"
+      interval: 'weekly'
+      day: 'monday'
+      time: '06:00'
+      timezone: 'Europe/Paris'
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 3
     groups:
+      radix:
+        patterns: ['@radix-ui/*', 'radix-ui']
+      tanstack:
+        patterns: ['@tanstack/*']
+      testing:
+        patterns:
+          [
+            '@testing-library/*',
+            'vitest',
+            'jsdom',
+            '@vitejs/*',
+            'vite-tsconfig-paths',
+          ]
       minor-and-patch:
-        update-types:
-          - "minor"
-          - "patch"
+        update-types: ['minor', 'patch']
+    ignore:
+      # Types alignés sur engines.node (>=22) : on ne suit pas les majeures.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      # Montées à la main (versions pinnées, override @next/env couplé à Next).
+      - dependency-name: 'next'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react-dom'
+        update-types: ['version-update:semver-major']
     labels:
-      - "dependencies"
+      - 'dependencies'
     commit-message:
-      prefix: "deps"
-      include: "scope"
+      prefix: 'deps'
+      include: 'scope'
 
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "monthly"
+      interval: 'monthly'
     labels:
-      - "ci"
+      - 'ci'
     commit-message:
-      prefix: "ci"
+      prefix: 'ci'
