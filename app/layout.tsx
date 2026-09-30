@@ -1,14 +1,12 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
-import '../globals.css';
-import { hasLocale, NextIntlClientProvider } from 'next-intl';
+import './globals.css';
 import React from 'react';
-import { siteConfig } from '@/config/site-config';
-import { ThemeProvider } from '@/components/providers/theme-provider';
+import { ThemeProvider } from 'next-themes';
 import { NuqsAdapter } from 'nuqs/adapters/next';
-import ReactQueryProvider from '@/components/providers/react-query-provider';
 import { Toaster } from 'sonner';
-import { routing } from '@/i18n/routing';
+import { siteConfig } from '@/config/site-config';
+import ReactQueryProvider from '@/components/providers/react-query-provider';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -23,29 +21,18 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: siteConfig.name,
   description: siteConfig.description,
+  icons: {
+    icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>',
+  },
 };
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
-  params,
 }: Readonly<{
   children: React.ReactNode;
-  params: Promise<{ locale: string }>;
 }>) {
-  const { locale } = await params;
-  const safeLocale = hasLocale(routing.locales, locale)
-    ? locale
-    : routing.defaultLocale;
-
   return (
-    <html lang={safeLocale} suppressHydrationWarning>
-      <head>
-        <title>{siteConfig.name}</title>
-        <link
-          rel="icon"
-          href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>"
-        />
-      </head>
+    <html lang="fr" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} min-h-screen w-screen antialiased`}
       >
@@ -57,10 +44,8 @@ export default async function RootLayout({
             disableTransitionOnChange
           >
             <NuqsAdapter>
-              <NextIntlClientProvider>
-                {children}
-                <Toaster />
-              </NextIntlClientProvider>
+              {children}
+              <Toaster />
             </NuqsAdapter>
           </ThemeProvider>
         </ReactQueryProvider>

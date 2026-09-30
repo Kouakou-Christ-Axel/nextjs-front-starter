@@ -1,5 +1,3 @@
-import { varlockNextConfigPlugin } from '@varlock/nextjs-integration/plugin';
-
 const isProd = process.env.NODE_ENV === 'production';
 
 const securityHeaders = [
@@ -29,6 +27,4 @@ const nextConfig = {
   },
 };
 
-const withVarlock = varlockNextConfigPlugin();
-
-export default withVarlock(nextConfig);
+export default nextConfig;

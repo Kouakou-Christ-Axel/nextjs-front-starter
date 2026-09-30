@@ -5,7 +5,7 @@ import * as auth from '@/lib/auth';
 import { ApiError } from '@/lib/api-error';
 import type { IUser } from '@/features/auth/types/user.type';
 
-vi.mock('@/i18n/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: vi.fn(),
   usePathname: vi.fn(),
 }));
@@ -14,7 +14,7 @@ vi.mock('@/lib/auth', () => ({
   useUser: vi.fn(),
 }));
 
-import * as navigation from '@/i18n/navigation';
+import * as navigation from 'next/navigation';
 import UserClientProvider from './user-client-provider';
 
 const mockUser: IUser = {

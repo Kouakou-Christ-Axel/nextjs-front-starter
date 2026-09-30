@@ -1,51 +1,58 @@
 import z from 'zod';
 
-// Unicode letters, spaces, apostrophes, hyphens. Used for human names.
 const nameRegex = /^[\p{L}\s'-]+$/u;
 
-// Email: trim + lowercase + RFC 5321 upper bound (254 chars)
+const emailMessage = 'Adresse e-mail invalide';
+
+// trim + lowercase + borne haute RFC 5321 (254 caractères)
 const emailField = z
   .string()
   .trim()
   .toLowerCase()
-  .pipe(z.email({ message: 'emailInvalid' }))
-  .pipe(z.string().max(254, { message: 'emailInvalid' }));
+  .pipe(z.email({ message: emailMessage }))
+  .pipe(z.string().max(254, { message: emailMessage }));
 
 export const loginSchema = z.object({
   email: emailField,
   password: z
     .string()
-    .min(8, { message: 'passwordMinLength' })
-    .max(128, { message: 'passwordMinLength' }),
+    .min(8, { message: 'Le mot de passe doit contenir au moins 8 caractères' })
+    .max(128, {
+      message: 'Le mot de passe ne doit pas dépasser 128 caractères',
+    }),
 });
 
 export type LoginSchemaType = z.infer<typeof loginSchema>;
 
-// Name field factory so firstName/lastName share the same rules
-// with their own i18n keys.
-const nameField = (minKey: string, invalidKey: string) =>
+const nameField = (label: string) =>
   z
     .string()
     .trim()
-    .min(2, { message: minKey })
-    .max(50, { message: invalidKey })
-    .regex(nameRegex, { message: invalidKey });
+    .min(2, { message: `${label} doit contenir au moins 2 caractères` })
+    .max(50, { message: `${label} ne doit pas dépasser 50 caractères` })
+    .regex(nameRegex, {
+      message: `${label} contient des caractères invalides`,
+    });
 
 export const registerSchema = loginSchema
   .extend({
-    firstName: nameField('firstNameMinLength', 'firstNameInvalid'),
-    lastName: nameField('lastNameMinLength', 'lastNameInvalid'),
+    firstName: nameField('Le prénom'),
+    lastName: nameField('Le nom'),
     password: z
       .string()
-      .min(12, { message: 'passwordMinLength' })
-      .max(128, { message: 'passwordMinLength' })
-      .regex(/[A-Z]/, { message: 'passwordUpper' })
-      .regex(/[a-z]/, { message: 'passwordLower' })
-      .regex(/[0-9]/, { message: 'passwordDigit' }),
+      .min(12, {
+        message: 'Le mot de passe doit contenir au moins 12 caractères',
+      })
+      .max(128, {
+        message: 'Le mot de passe ne doit pas dépasser 128 caractères',
+      })
+      .regex(/[A-Z]/, { message: 'Ajoutez au moins une majuscule' })
+      .regex(/[a-z]/, { message: 'Ajoutez au moins une minuscule' })
+      .regex(/[0-9]/, { message: 'Ajoutez au moins un chiffre' }),
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: 'passwordMismatch',
+    message: 'Les mots de passe ne correspondent pas',
     path: ['confirmPassword'],
   });
 

@@ -6,7 +6,7 @@ function PublicLoading() {
     <div className="flex h-screen items-center justify-center">
       <div className="flex flex-col items-center justify-center">
         <Loader2 className="size-12 animate-spin" />
-        <p>Loading...</p>
+        <p>Chargement…</p>
       </div>
     </div>
   );

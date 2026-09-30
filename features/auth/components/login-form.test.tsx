@@ -4,42 +4,14 @@ import userEvent from '@testing-library/user-event';
 import React, { Suspense } from 'react';
 import * as auth from '@/lib/auth';
 
-// ── next-intl ────────────────────────────────────────────────────────────────
-vi.mock('next-intl', () => ({
-  useTranslations: () => (key: string) => key,
-}));
-
-// ── @/i18n/navigation ────────────────────────────────────────────────────────
-vi.mock('@/i18n/navigation', () => ({
-  Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
-    <a href={href}>{children}</a>
-  ),
-  useRouter: vi.fn(),
-}));
-
-// ── next/navigation ───────────────────────────────────────────────────────────
 vi.mock('next/navigation', () => ({
+  useRouter: vi.fn(),
   useSearchParams: vi.fn(),
 }));
 
-// ── animate-ui Button → bouton HTML simple ────────────────────────────────────
-vi.mock('@/components/animate-ui/components/buttons/button', () => ({
-  Button: ({
-    children,
-    asChild: _asChild,
-    variant: _variant,
-    ...props
-  }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-    asChild?: boolean;
-    variant?: string;
-  }) => <button {...props}>{children}</button>,
-}));
-
-import * as navigation from '@/i18n/navigation';
 import * as nextNavigation from 'next/navigation';
 import LoginForm from './login-form';
 
-// ── helper : retourne un faux résultat de useLogin ────────────────────────────
 function makeMockUseLogin(
   overrides: { mutate?: ReturnType<typeof vi.fn>; isPending?: boolean } = {}
 ) {
@@ -60,14 +32,14 @@ describe('LoginForm — flow returnTo', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     pushMock.mockReset();
-    vi.mocked(navigation.useRouter).mockReturnValue({
+    vi.mocked(nextNavigation.useRouter).mockReturnValue({
       push: pushMock,
       replace: vi.fn(),
       back: vi.fn(),
       forward: vi.fn(),
       refresh: vi.fn(),
       prefetch: vi.fn(),
-    } as unknown as ReturnType<typeof navigation.useRouter>);
+    } as unknown as ReturnType<typeof nextNavigation.useRouter>);
   });
 
   it('redirige vers /dashboard par défaut quand returnTo est absent', async () => {
@@ -95,7 +67,7 @@ describe('LoginForm — flow returnTo', () => {
       'test@example.com'
     );
     await user.type(screen.getByPlaceholderText('••••••••'), 'password123');
-    await user.click(screen.getByRole('button', { name: 'login.submit' }));
+    await user.click(screen.getByRole('button', { name: 'Se connecter' }));
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/dashboard'));
   });
@@ -126,7 +98,7 @@ describe('LoginForm — flow returnTo', () => {
       'test@example.com'
     );
     await user.type(screen.getByPlaceholderText('••••••••'), 'password123');
-    await user.click(screen.getByRole('button', { name: 'login.submit' }));
+    await user.click(screen.getByRole('button', { name: 'Se connecter' }));
 
     await waitFor(() =>
       expect(pushMock).toHaveBeenCalledWith('/fr/dashboard/settings')
@@ -159,7 +131,7 @@ describe('LoginForm — flow returnTo', () => {
       'test@example.com'
     );
     await user.type(screen.getByPlaceholderText('••••••••'), 'password123');
-    await user.click(screen.getByRole('button', { name: 'login.submit' }));
+    await user.click(screen.getByRole('button', { name: 'Se connecter' }));
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/dashboard'));
   });
@@ -207,7 +179,7 @@ describe('LoginForm — flow returnTo', () => {
       'test@example.com'
     );
     await user.type(screen.getByPlaceholderText('••••••••'), 'password123');
-    await user.click(screen.getByRole('button', { name: 'login.submit' }));
+    await user.click(screen.getByRole('button', { name: 'Se connecter' }));
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/login'));
   });

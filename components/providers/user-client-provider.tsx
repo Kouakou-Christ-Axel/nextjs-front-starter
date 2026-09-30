@@ -1,13 +1,12 @@
 'use client';
 import React from 'react';
 import { useUser } from '@/lib/auth';
-import { useRouter, usePathname } from '@/i18n/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { ApiError } from '@/lib/api-error';
 
-// TODO i18n: move these user-facing strings to the translation layer.
-const LOADING_MESSAGE = 'Loading…';
+const LOADING_MESSAGE = 'Chargement…';
 const TRANSIENT_ERROR_MESSAGE =
-  'Could not load your session. Please try again in a moment.';
+  'Impossible de charger votre session. Veuillez réessayer dans un instant.';
 
 function buildLoginRedirect(pathname: string | null): string {
   if (!pathname || pathname.startsWith('/login')) return '/login';
@@ -44,7 +43,7 @@ function UserClientProvider({ children }: { children: React.ReactNode }) {
     return (
       <div
         role="alert"
-        className="flex min-h-screen items-center justify-center px-6 text-center text-sm text-muted-foreground"
+        className="text-muted-foreground flex min-h-screen items-center justify-center px-6 text-center text-sm"
       >
         {TRANSIENT_ERROR_MESSAGE}
       </div>

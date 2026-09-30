@@ -27,3 +27,5 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test:run
       - run: pnpm build
+        env:
+          NEXT_PUBLIC_BACKEND_URL: http://localhost:8080

@@ -15,7 +15,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
   const isDev = process.env.NODE_ENV !== 'production';
 
   return (
-    <html lang="en">
+    <html lang="fr">
       <body
         style={{
           margin: 0,
@@ -47,7 +47,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               fontWeight: 600,
             }}
           >
-            Something went wrong
+            Une erreur est survenue
           </h1>
           <p
             style={{
@@ -56,7 +56,8 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
               color: '#64748b',
             }}
           >
-            An unexpected error occurred. You can try again or go back home.
+            Une erreur inattendue s&apos;est produite. Vous pouvez réessayer ou
+            revenir à l&apos;accueil.
           </p>
           {isDev && (
             <pre
@@ -91,7 +92,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                 cursor: 'pointer',
               }}
             >
-              Try again
+              Réessayer
             </button>
             <button
               type="button"
@@ -109,7 +110,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                 cursor: 'pointer',
               }}
             >
-              Back to home
+              Retour à l&apos;accueil
             </button>
           </div>
         </div>

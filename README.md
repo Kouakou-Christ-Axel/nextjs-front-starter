@@ -1,325 +1,66 @@
-# nextjs-start
+# Next.js front starter
 
-Starter Next.js perso, pensé pour démarrer vite un nouveau projet entre potes sans refaire dix fois la même plomberie (auth, i18n, thème, design system, React Query).
-
-> Projet en cours — certaines features sont encore à finir (voir [Roadmap](#roadmap)).
-
-## Sommaire
-
-- [Stack](#stack)
-- [Prérequis](#prérequis)
-- [Démarrage rapide](#démarrage-rapide)
-- [Variables d'environnement](#variables-denvironnement)
-- [Scripts](#scripts)
-- [Structure du projet](#structure-du-projet)
-- [Architecture](#architecture)
-- [Conventions](#conventions)
-- [Roadmap](#roadmap)
-
-> Pour la doc détaillée de l'architecture (couches, flux, patterns, conventions), voir [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Starter Next.js (App Router) avec authentification par cookies, en français uniquement.
 
 ## Stack
 
-| Domaine         | Choix                                                             |
-| --------------- | ----------------------------------------------------------------- |
-| Framework       | Next.js 16 (App Router) + React 19                                |
-| Runtime         | Node.js ≥ 22                                                      |
-| Package manager | pnpm ≥ 10 (corepack)                                              |
-| Langage         | TypeScript 5                                                      |
-| Styling         | Tailwind CSS 4 + `tw-animate-css`                                 |
-| UI              | shadcn/ui (Radix) + HeroUI + registry maison `animate-ui`         |
-| Animations      | Framer Motion / Motion                                            |
-| Formulaires     | React Hook Form + Zod                                             |
-| Data fetching   | TanStack Query v5 + wrapper `fetch` maison (`lib/api-client.ts`)  |
-| i18n            | next-intl (FR par défaut, EN dispo)                               |
-| Thème           | next-themes (light / dark)                                        |
-| Toasts          | Sonner                                                            |
-| Query string    | Nuqs                                                              |
-| Validation env  | [varlock](https://varlock.dev) (`.env.schema` + `@env-spec`)      |
-| Lint / Format   | ESLint 9 (flat config) + Prettier + `prettier-plugin-tailwindcss` |
-| Git hooks       | Husky + lint-staged                                               |
+| Domaine     | Outil                                         |
+| ----------- | --------------------------------------------- |
+| Framework   | Next.js 16, React 19, TypeScript strict       |
+| Style / UI  | Tailwind v4, shadcn/ui (Radix), `next-themes` |
+| Données     | TanStack Query, client `fetch` maison         |
+| Formulaires | react-hook-form + Zod                         |
+| Qualité     | ESLint, Prettier, Vitest, Husky, lint-staged  |
 
-Pas d'ORM, pas de handler API dans ce repo : c'est un **front pur** qui tape sur un backend HTTP externe.
+## Démarrage
 
-## Prérequis
-
-- [Node.js](https://nodejs.org/) ≥ 22 (requis par varlock)
-- [pnpm](https://pnpm.io/) ≥ 10 — `corepack enable` suffit (le `packageManager` est épinglé dans `package.json`)
-- Un backend qui expose au minimum les endpoints `/auth/*` listés plus bas
-
-## Démarrage rapide
+Prérequis : Node ≥ 22, pnpm ≥ 10.
 
 ```bash
 pnpm install
-# Optionnel : crée .env.local pour surcharger les valeurs de .env.schema
-pnpm dev                         # http://localhost:3000
+cp .env.example .env.local
+pnpm dev
 ```
-
-Le site redirige automatiquement vers `/fr` (locale par défaut).
 
 ## Variables d'environnement
 
-La source de vérité est **`.env.schema`** (format [varlock](https://varlock.dev)). Chaque variable y est déclarée avec ses décorateurs (`@required`, `@type=url`, `@sensitive`, etc.) et sa valeur par défaut :
+Validées par Zod au chargement dans `config/env.ts`.
 
-```
-# @required @type=url
-NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
-```
+| Variable                   | Rôle                                            | Défaut  |
+| -------------------------- | ----------------------------------------------- | ------- |
+| `NEXT_PUBLIC_BACKEND_URL`  | URL du backend (obligatoire)                    | -       |
+| `NEXT_PUBLIC_CSRF_ENABLED` | Envoie `X-CSRF-Token` sur les requêtes mutantes | `false` |
 
-`.env.schema` **est** le modèle d'environnement versionné — il documente chaque variable (type, obligatoire, sensibilité, valeur par défaut). Pas besoin de `.env.example` : il ferait doublon et dériverait. Pour surcharger en local, crée un `.env.local` (gitignoré) avec les mêmes clés. Le fichier `env.d.ts` (auto-généré par `pnpm exec varlock typegen` ou par le plugin Next) donne le typage à l'accès via `ENV` ou `env`.
-
-varlock est branché de la manière officielle : l'override `@next/env` dans `pnpm-workspace.yaml` + `varlockNextConfigPlugin` dans `next.config.ts` chargent et valident les `.env`. C'est l'override qui fait que `next dev`/`next build` fonctionnent sans wrapper `varlock run`.
-
-Accès typé dans le code :
-
-```ts
-import { env } from '@/config/env';
-env.NEXT_PUBLIC_BACKEND_URL; // string, garanti non-vide
-```
-
-Si une variable `@required` manque au build/dev, varlock plante avec un message clair.
-
-> **Note Turbopack** : `config/env.ts` n'est pas un simple ré-export de `varlock/env`. Côté serveur, le `ENV` typé de varlock est utilisé tel quel. Côté navigateur en revanche, les valeurs résolues de varlock ne sont **pas** inlinées dans les chunks Turbopack (vérifiable en inspectant `.next/static` après un build) — `ENV.*` y serait `undefined` et casserait chaque `fetch` client. Le module utilise donc un `Proxy` qui retombe sur `process.env.NEXT_PUBLIC_*` dans le navigateur (que Next.js remplace statiquement, Webpack comme Turbopack). Toute nouvelle variable publique doit être ajoutée au type `AppEnv` et à la branche client du proxy (voir `docs/ARCHITECTURE.md` §11).
+Toute nouvelle variable `NEXT_PUBLIC_*` s'ajoute au schéma **et** à l'objet passé à `parse`, avec un accès littéral (`process.env.NEXT_PUBLIC_X`), sans quoi Next ne l'inline pas côté client.
 
 ## Scripts
 
-```bash
-pnpm dev          # dev server
-pnpm build        # build prod
-pnpm start        # run build prod
-pnpm lint         # ESLint
-pnpm format       # Prettier --write
-pnpm test:run     # Vitest (CI)
-```
+`pnpm dev`, `build`, `lint`, `typecheck`, `test`, `test:run`, `format`.
 
-Le hook `pre-commit` (Husky) lance `lint-staged` : Prettier + ESLint sur les fichiers modifiés.
-
-## Structure du projet
+## Structure
 
 ```
-nextjs-start/
-├── app/[locale]/              # App Router + i18n
-│   ├── (public)/              # Pages accessibles sans auth
-│   │   ├── page.tsx           # Home
-│   │   └── (auth)/            # /login, /register
-│   └── (protected)/           # Pages protégées (UserClientProvider)
-│       └── dashboard/
-├── components/
-│   ├── ui/                    # Composants shadcn-style (button, form, input, …)
-│   ├── animate-ui/            # Registry maison (backgrounds, buttons animés)
-│   ├── features/auth/         # login-form, register-form
-│   └── providers/             # ReactQuery, Theme, UserClient
-├── features/                  # Logique métier organisée par domaine
-│   └── auth/
-│       ├── lib/               # Factory createAuth
-│       ├── requests/          # Appels backend
-│       ├── schemas/           # Zod
-│       ├── strategies/        # jwtStrategy, googleStrategy (stub)
-│       └── types/
-├── lib/                       # api-client, api-error, utils, auth (réexport hooks)
-├── hooks/                     # use-mobile, use-is-in-view
-├── config/                    # env, site-config, navbar-config
-├── i18n/                      # routing, request loader, messages (en/, fr/)
-├── types/                     # Types partagés (IApiErrorBody, …)
-└── proxy.ts                   # Middleware next-intl
+app/                 routes (public) et (protected), error, global-error
+components/ui/       composants shadcn
+components/providers/ react-query, garde utilisateur
+features/<domaine>/  components, schemas, requests, types, hooks du domaine
+lib/                 api-client, csrf, safe-redirect, utils
+middleware/          garde d'auth et CSP, appelés depuis proxy.ts
+config/              env, site, cookies d'auth
 ```
 
-**Pourquoi deux dossiers `features` ?**
+## Authentification
 
-- `components/features/` → les **composants UI** d'une feature (formulaires, cartes, sections).
-- `features/` (racine) → la **logique** (hooks, requests, schemas, types, strategies).
+- `proxy.ts` redirige vers `/login?returnTo=<chemin>` les routes `/dashboard/*` sans cookie de session.
+- `UserClientProvider` (layout `(protected)`) appelle `useUser()` : redirection sur 401, message sur erreur transitoire.
+- Après login, `safeRedirectTarget` valide `returnTo` (pas d'URL absolue, `//`, `javascript:`).
 
-Ça permet de co-localiser la logique sans mélanger composants et code non-visuel.
+Le backend doit exposer `POST /auth/login`, `POST /auth/register`, `POST /auth/logout`, `GET /auth/me`, `GET /auth/refresh`, avec des cookies httpOnly (`credentials: 'include'`, CORS et `SameSite` à configurer).
 
-## Architecture
+## Sécurité
 
-### 1. Routing localisé
+En-têtes (`next.config.ts`), CSP en `Report-Only` avec nonce (`middleware/csp.ts`), CSRF optionnel, anti-énumération de comptes et gestion du 429 dans les hooks d'auth.
 
-Toutes les routes passent par `app/[locale]/`. Le middleware `proxy.ts` (next-intl) détecte la locale et redirige au besoin.
+## Nouvelle feature
 
-Les locales sont configurées dans `i18n/routing.ts` :
-
-```ts
-locales: ['en', 'fr'];
-defaultLocale: 'fr';
-```
-
-Les traductions vivent dans `i18n/messages/{en,fr}/*.json`. Le loader (`i18n/request.ts`) les charge dynamiquement selon la locale active.
-
-Côté code :
-
-```tsx
-// Server Component
-const t = await getTranslations('home');
-
-// Client Component
-const t = useTranslations('auth');
-```
-
-### 2. Routes publiques vs protégées
-
-On utilise les **route groups** d'App Router :
-
-- `app/[locale]/(public)/` : pas d'auth requise. Inclut `/login`, `/register`, la home.
-- `app/[locale]/(protected)/` : enveloppé dans `<UserClientProvider>` qui appelle `useUser()`. Sur un **401 confirmé** (ou absence d'utilisateur sans erreur) → redirige vers `/login?returnTo=<chemin>`. Sur une **erreur transiente** (réseau, 5xx) il affiche un message au lieu de bouncer vers `/login`.
-
-La protection est **côté client** pour l'instant. Pour durcir, il faudra ajouter un middleware serveur (voir Roadmap).
-
-### 3. Auth — pattern strategy
-
-L'auth est découplée pour pouvoir brancher plusieurs providers sans toucher à l'UI.
-
-```
-┌──────────────────────┐
-│   LoginForm, etc.    │  components/features/auth/
-└──────────┬───────────┘
-           │ utilise
-           ▼
-┌──────────────────────┐
-│   useLogin, useUser… │  features/auth/lib/create-auth.ts
-│   (hooks React Query)│  (factory)
-└──────────┬───────────┘
-           │ délègue à
-           ▼
-┌──────────────────────┐
-│   AuthStrategy       │  features/auth/types/auth.type.ts
-│   (interface)        │
-└──────────┬───────────┘
-           │ implémentée par
-           ▼
-┌──────────────────────┐
-│ jwtStrategy          │  features/auth/strategies/jwt.strategy.ts
-│ googleStrategy (stub)│
-└──────────┬───────────┘
-           │ appelle
-           ▼
-┌──────────────────────┐
-│  auth.request.ts     │  features/auth/requests/
-│  (fonctions fetch)   │
-└──────────┬───────────┘
-           │ via
-           ▼
-┌──────────────────────┐
-│  api (api-client.ts) │  lib/
-└──────────────────────┘
-```
-
-**Comment ajouter un provider (ex : Google OAuth)** :
-
-1. Créer `features/auth/strategies/google.strategy.ts` qui implémente `AuthStrategy`.
-2. L'enregistrer dans la factory :
-   ```ts
-   const { useUser, useLogin, … } = createAuth(
-     { jwt: jwtStrategy, google: googleStrategy },
-     'jwt' // stratégie par défaut
-   );
-   ```
-3. Exposer les hooks depuis `lib/auth.ts`.
-
-**Refresh automatique** : `useUser()` intercepte les `401` et appelle `strategy.refresh()` avant de refaire la requête. Tout ça est transparent pour les composants.
-
-### 4. Client API
-
-`lib/api-client.ts` expose un objet `api` avec `get/post/put/patch/delete`. Ce n'est **pas** axios (malgré la dépendance dans `package.json`, elle peut être retirée) — c'est un wrapper `fetch` qui :
-
-- préfixe chaque URL avec `NEXT_PUBLIC_BACKEND_URL`,
-- attache les cookies (cookies du navigateur côté client, `next/headers` côté serveur),
-- retourne le corps JSON **brut** typé `T` (aucune enveloppe `{ data }` imposée) et throw `ApiError` sur `!response.ok` — avec extraction robuste du message, y compris `message: string[]` (validation NestJS),
-- supporte `params` (query string), `cache`, et `next` (ISR tags Next.js).
-
-```ts
-const user = await api.get<IUser>('/auth/me');
-```
-
-### 5. Endpoints backend attendus
-
-Le backend (non inclus) doit au minimum exposer :
-
-| Méthode | URL              | Rôle                          |
-| ------- | ---------------- | ----------------------------- |
-| POST    | `/auth/login`    | login email/password          |
-| POST    | `/auth/register` | création compte               |
-| POST    | `/auth/logout`   | invalidation session          |
-| GET     | `/auth/me`       | user courant                  |
-| GET     | `/auth/refresh`  | refresh JWT (cookie httpOnly) |
-
-Les cookies sont envoyés avec `credentials: 'include'` → côté backend il faut configurer CORS + `SameSite` correctement.
-
-### 6. Design system
-
-- Tokens définis en CSS custom properties dans `app/globals.css` via `@theme inline` (Tailwind v4).
-- Thème clair/sombre géré par `next-themes` (toggle dans `components/ui/animated-theme-toggler.tsx`).
-- Composants de base (`components/ui/`) suivent les conventions shadcn : `cn()` pour merger les classes, variants via `class-variance-authority`.
-- Deux registries shadcn configurés dans `components.json` (officiel + `@animate-ui`).
-
-### 7. Providers
-
-`app/[locale]/layout.tsx` empile les providers dans cet ordre :
-
-```
-<NextIntlClientProvider>
-  <NuqsAdapter>
-    <ThemeProvider>
-      <ReactQueryProvider>
-        {children}
-      </ReactQueryProvider>
-    </ThemeProvider>
-  </NuqsAdapter>
-</NextIntlClientProvider>
-```
-
-## Conventions
-
-- **Aliases** : `@/*` pointe vers la racine (`tsconfig.json`).
-- **Nommage fichiers** : kebab-case (`login-form.tsx`), un composant par fichier.
-- **Features** : chaque domaine a sa pyramide `types → schemas → requests → strategies → lib (hooks)`.
-- **Formulaires** : toujours `react-hook-form` + `zodResolver` + composants `Form*` de `components/ui/form.tsx`.
-- **Erreurs API** : tout passe par `ApiError` ; ne pas retourner de `null` silencieux.
-- **i18n** : pas de texte hardcodé dans les composants "feature" — passer par `useTranslations`.
-
-## Roadmap
-
-### À corriger
-
-- [x] **Bug `useLogin`** : `onError` appelle `toast.success()` au lieu de `toast.error()` (`features/auth/lib/create-auth.ts:52`).
-- [x] Harmoniser les `onError` sur tous les hooks auth (`useRegister`, `useLogout`, `useRefresh` n'en ont pas).
-- [x] Compléter `hooks/use-mobile.ts` (actuellement vide/minimal).
-- [x] Implémenter `utils/handle-api-error.ts` (fichier vide).
-- [ ] Remplir `config/navbar-config.ts` (vide).
-
-### À finir
-
-- [ ] **Dashboard** : page placeholder, à construire (layout, nav, widgets).
-- [x] **Bouton logout** : pas d'UI pour se déconnecter.
-- [ ] **Page profil / settings** dans `(protected)/`.
-- [x] **Error boundary** : ajouter `app/[locale]/error.tsx` et `global-error.tsx`.
-- [ ] **`googleStrategy`** : aujourd'hui c'est un stub `throw new Error('Not implemented')`.
-
-### À durcir
-
-- [x] **Middleware d'auth serveur** : actuellement la protection est 100 % côté client (`UserClientProvider`). Ajouter un check dans `proxy.ts` (ou un middleware dédié) qui bloque les routes `(protected)` si le cookie de session est absent/invalide.
-- [ ] **Refresh token** : logique présente dans `useUser`, mais jamais testée en conditions réelles.
-- [x] **Retirer `axios`** de `package.json` s'il n'est pas utilisé (on a notre wrapper `fetch`).
-
-### Sécurité renforcée
-
-- [x] **CSRF** : token store en mémoire, `X-CSRF-Token` injecté sur requêtes mutantes (flag `NEXT_PUBLIC_CSRF_ENABLED`, désactivé par défaut)
-- [x] **CSP Report-Only** : nonce Edge-compatible, directives `script-src`/`style-src`/`connect-src`, `frame-ancestors 'none'`
-- [x] **Headers de sécurité** : `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS (prod)
-- [x] **Zod durci** : email (trim/lowercase/max 254), password login (min 8/max 128), password register (min 12 + complexité), noms (Unicode, min 2/max 50)
-- [x] **Safe redirect** : `safeRedirectTarget()` bloque URL absolues, `//`, `javascript:`, backslash, paths > 2048 chars
-- [x] **Anti-énumération + 429** : messages d'erreur auth génériques côté front, priorité message "Too many attempts" sur 429
-- [x] **Flow returnTo** : middleware passe `?returnTo=<pathname>` lors de la redirection vers `/login`, le form redirige vers `safeRedirectTarget(returnTo, '/dashboard')` après succès
-
-### Qualité
-
-- [x] **Tests** : rien n'est en place. Vitest + Testing Library pour l'unitaire, Playwright pour l'e2e.
-- [ ] **CI** : GitHub Actions (lint + typecheck + build).
-- [ ] **Commitlint** + Conventional Commits (optionnel).
-- [ ] **Storybook** ou équivalent pour les composants UI (optionnel).
-
-### Nice-to-have
-
-- [ ] Page 404 plus soignée.
-- [ ] Skeleton loaders génériques dans `components/ui/`.
-- [ ] Helper `api.withSchema(zodSchema)` pour valider les réponses backend au runtime.
+La commande `/feature <nom>` (`.claude/commands/feature.md`) génère `features/<nom>/`.

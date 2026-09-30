@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import LoginForm from '@/components/features/auth/login-form';
+import LoginForm from '@/features/auth/components/login-form';
 
 async function LoginPage() {
   return (

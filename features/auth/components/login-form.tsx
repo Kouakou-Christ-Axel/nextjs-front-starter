@@ -1,12 +1,14 @@
 'use client';
 import React from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { Loader2 } from 'lucide-react';
 import {
   loginSchema,
   LoginSchemaType,
 } from '@/features/auth/schemas/auth.schema';
-
 import {
   Form,
   FormControl,
@@ -16,8 +18,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useTranslations } from 'next-intl';
-import { Loader2 } from 'lucide-react';
 import {
   Card,
   CardAction,
@@ -26,14 +26,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Button } from '@/components/animate-ui/components/buttons/button';
-import { Link, useRouter } from '@/i18n/navigation';
+import { Button } from '@/components/ui/button';
 import { useLogin } from '@/lib/auth';
-import { useSearchParams } from 'next/navigation';
 import { safeRedirectTarget } from '@/lib/safe-redirect';
 
 function LoginForm() {
-  const t = useTranslations('auth');
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnTo = searchParams.get('returnTo');
@@ -63,11 +60,13 @@ function LoginForm() {
     <div className="w-full max-w-md">
       <Card>
         <CardHeader>
-          <CardTitle>{t('login.title')}</CardTitle>
-          <CardDescription>{t('login.description')}</CardDescription>
+          <CardTitle>Connectez-vous à votre compte</CardTitle>
+          <CardDescription>
+            Entrez vos informations de connexion pour accéder à votre compte.
+          </CardDescription>
           <CardAction>
             <Button variant="link" asChild>
-              <Link href="/register">{t('login.signUp')}</Link>
+              <Link href="/register">S&apos;inscrire</Link>
             </Button>
           </CardAction>
         </CardHeader>
@@ -79,7 +78,7 @@ function LoginForm() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('emailLabel')}</FormLabel>
+                    <FormLabel>Adresse e-mail</FormLabel>
                     <FormControl>
                       <Input
                         type="email"
@@ -98,7 +97,7 @@ function LoginForm() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('passwordLabel')}</FormLabel>
+                    <FormLabel>Mot de passe</FormLabel>
                     <FormControl>
                       <Input
                         type="password"
@@ -116,7 +115,7 @@ function LoginForm() {
                 {isLoading ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
-                  t('login.submit')
+                  'Se connecter'
                 )}
               </Button>
             </form>

@@ -1,4 +1,3 @@
-'use client';
 import React from 'react';
 
 function PublicTemplate({ children }: { children: React.ReactNode }) {

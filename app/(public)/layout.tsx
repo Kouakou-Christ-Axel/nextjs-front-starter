@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import PublicLoading from '@/app/[locale]/(public)/loading';
+import PublicLoading from '@/app/(public)/loading';
 
 function PublicLayout({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<PublicLoading />}>{children}</Suspense>;

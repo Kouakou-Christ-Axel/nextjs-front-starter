@@ -4,12 +4,6 @@ import userEvent from '@testing-library/user-event';
 import { LogoutButton } from './logout-button';
 import * as auth from '@/lib/auth';
 
-// Mock next-intl's useTranslations to return the key directly
-vi.mock('next-intl', () => ({
-  useTranslations: () => (key: string) => key,
-}));
-
-// Mock the useLogout hook shape
 function mockUseLogout(mutate: () => void = vi.fn(), isPending = false) {
   return {
     mutate,
@@ -24,10 +18,12 @@ describe('LogoutButton', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders the translated logout label', () => {
+  it('renders the default logout label', () => {
     vi.spyOn(auth, 'useLogout').mockReturnValue(mockUseLogout());
     render(<LogoutButton />);
-    expect(screen.getByRole('button', { name: /logout/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Déconnexion' })
+    ).toBeInTheDocument();
   });
 
   it('calls useLogout().mutate on click', async () => {
@@ -50,7 +46,6 @@ describe('LogoutButton', () => {
     vi.spyOn(auth, 'useLogout').mockReturnValue(mockUseLogout());
     render(<LogoutButton variant="destructive" />);
     const btn = screen.getByRole('button');
-    // The Button component uses CVA; we check that the destructive variant is applied
     expect(btn.className).toMatch(/destructive/);
   });
 

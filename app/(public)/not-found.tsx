@@ -1,5 +1,5 @@
-'use client';
 import React from 'react';
+import Link from 'next/link';
 import {
   Empty,
   EmptyContent,
@@ -7,27 +7,21 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { useRouter } from '@/i18n/navigation';
-import { Button } from '@/components/animate-ui/components/buttons/button';
+import { Button } from '@/components/ui/button';
 
 function NotFound() {
-  const router = useRouter();
   return (
     <Empty>
       <EmptyHeader>
-        <EmptyTitle>404 - Not Found</EmptyTitle>
+        <EmptyTitle>404 - Page introuvable</EmptyTitle>
         <EmptyDescription>
-          The page you&apos;re looking for doesn&apos;t exist. Try searching for
-          what you need below.
+          La page que vous recherchez n&apos;existe pas ou a été déplacée.
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <Button>
-          <span onClick={() => router.back()}>Go Back</span>
+        <Button asChild>
+          <Link href="/">Retour à l&apos;accueil</Link>
         </Button>
-        <EmptyDescription>
-          Need help? <a href="#">Contact support</a>
-        </EmptyDescription>
       </EmptyContent>
     </Empty>
   );
