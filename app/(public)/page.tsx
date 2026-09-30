@@ -10,7 +10,7 @@ export default async function HomePage() {
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 py-24 sm:py-32 lg:px-8">
       <HexagonBackground className="absolute inset-0 flex items-center justify-center rounded-xl" />
       <div className="relative z-10 max-w-2xl text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-gray-100 sm:text-6xl">
+        <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl dark:text-gray-100">
           {t('welcomeMessage')}
         </h1>
         <p className="mt-6 text-lg leading-8 text-gray-600 dark:text-gray-300">

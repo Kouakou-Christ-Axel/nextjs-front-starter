@@ -11,8 +11,4 @@ export const AUTH_COOKIE_NAMES = new Set<string>([
   '__Host-psifi.x-csrf-token',
 ]);
 
-// Patterns de routes qui nécessitent une authentification serveur.
-// Les locales sont gérées par next-intl en amont (ex: /fr/dashboard, /en/dashboard).
-export const PROTECTED_PATH_PATTERNS: RegExp[] = [
-  /^\/(en|fr)\/dashboard(\/.*)?$/,
-];
+export const PROTECTED_PATH_PATTERNS: RegExp[] = [/^\/dashboard(\/.*)?$/];

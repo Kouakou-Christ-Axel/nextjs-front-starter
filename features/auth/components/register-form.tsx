@@ -162,7 +162,7 @@ function LoginForm() {
 
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? (
-                  <Loader2 className="animate-spin size-4" />
+                  <Loader2 className="size-4 animate-spin" />
                 ) : (
                   t('register.submit')
                 )}
