@@ -1,4 +1,3 @@
-// Interface minimale dont le middleware a besoin (ISP — ne dépend pas de tout NextRequest).
 type CookieStore = {
   get(name: string): { value: string } | undefined;
 };
@@ -21,24 +20,9 @@ export function hasAuthCookie(
   return false;
 }
 
-export function extractLocale(
-  pathname: string,
-  locales: readonly string[],
-  fallback: string
-): string {
-  const seg = pathname.split('/')[1];
-  return locales.includes(seg) ? seg : fallback;
-}
-
-export function buildLoginRedirectUrl(
-  reqUrl: URL,
-  pathname: string,
-  locales: readonly string[],
-  defaultLocale: string
-): URL {
-  const locale = extractLocale(pathname, locales, defaultLocale);
+export function buildLoginRedirectUrl(reqUrl: URL, pathname: string): URL {
   const url = new URL(reqUrl);
-  url.pathname = `/${locale}/login`;
+  url.pathname = '/login';
   url.search = '';
   url.searchParams.set('returnTo', pathname);
   return url;

@@ -2,33 +2,28 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildLoginRedirectUrl,
-  extractLocale,
   hasAuthCookie,
   isProtectedPath,
 } from './auth-guard';
 
 describe('isProtectedPath', () => {
-  const patterns = [/^\/(en|fr)\/dashboard(\/.*)?$/];
+  const patterns = [/^\/dashboard(\/.*)?$/];
 
   it('matches the root of a protected path', () => {
-    expect(isProtectedPath('/fr/dashboard', patterns)).toBe(true);
+    expect(isProtectedPath('/dashboard', patterns)).toBe(true);
   });
 
   it('matches nested protected paths', () => {
-    expect(isProtectedPath('/en/dashboard/settings', patterns)).toBe(true);
+    expect(isProtectedPath('/dashboard/settings', patterns)).toBe(true);
   });
 
   it('does not match public paths', () => {
-    expect(isProtectedPath('/fr', patterns)).toBe(false);
-    expect(isProtectedPath('/en/login', patterns)).toBe(false);
-  });
-
-  it('does not match without a locale prefix', () => {
-    expect(isProtectedPath('/dashboard', patterns)).toBe(false);
+    expect(isProtectedPath('/', patterns)).toBe(false);
+    expect(isProtectedPath('/login', patterns)).toBe(false);
   });
 
   it('returns false on empty patterns', () => {
-    expect(isProtectedPath('/fr/dashboard', [])).toBe(false);
+    expect(isProtectedPath('/dashboard', [])).toBe(false);
   });
 });
 
@@ -57,67 +52,25 @@ describe('hasAuthCookie', () => {
   });
 });
 
-describe('extractLocale', () => {
-  const locales = ['en', 'fr'] as const;
-
-  it('returns the locale when present as first segment', () => {
-    expect(extractLocale('/fr/dashboard', locales, 'en')).toBe('fr');
-    expect(extractLocale('/en/settings', locales, 'fr')).toBe('en');
-  });
-
-  it('returns fallback when first segment is not a known locale', () => {
-    expect(extractLocale('/dashboard', locales, 'fr')).toBe('fr');
-  });
-
-  it('returns fallback for empty path', () => {
-    expect(extractLocale('/', locales, 'en')).toBe('en');
-  });
-});
-
 describe('buildLoginRedirectUrl', () => {
-  const locales = ['en', 'fr'] as const;
-
-  it('redirects to the locale-aware login page', () => {
-    const req = new URL('https://example.com/fr/dashboard');
-    const url = buildLoginRedirectUrl(req, '/fr/dashboard', locales, 'en');
-    expect(url.pathname).toBe('/fr/login');
-  });
-
-  it('falls back to the default locale when pathname has no locale', () => {
+  it('redirects to the login page with returnTo', () => {
     const req = new URL('https://example.com/dashboard');
-    const url = buildLoginRedirectUrl(req, '/dashboard', locales, 'fr');
-    expect(url.pathname).toBe('/fr/login');
+    const url = buildLoginRedirectUrl(req, '/dashboard');
+    expect(url.pathname).toBe('/login');
+    expect(url.searchParams.get('returnTo')).toBe('/dashboard');
   });
 
-  it('strips query parameters from the redirect url and adds returnTo', () => {
-    const req = new URL('https://example.com/fr/dashboard?token=secret');
-    const url = buildLoginRedirectUrl(req, '/fr/dashboard', locales, 'en');
+  it('strips query parameters from the original url', () => {
+    const req = new URL('https://example.com/dashboard?token=secret');
+    const url = buildLoginRedirectUrl(req, '/dashboard');
     expect(url.searchParams.get('token')).toBeNull();
-    expect(url.searchParams.get('returnTo')).toBe('/fr/dashboard');
-  });
-
-  it('adds returnTo param with the protected pathname', () => {
-    const req = new URL('https://example.com/fr/dashboard/settings');
-    const url = buildLoginRedirectUrl(
-      req,
-      '/fr/dashboard/settings',
-      locales,
-      'en'
-    );
-    expect(url.pathname).toBe('/fr/login');
-    expect(url.searchParams.get('returnTo')).toBe('/fr/dashboard/settings');
   });
 
   it('preserves the host and protocol of the request', () => {
-    const req = new URL('https://example.com:4443/en/dashboard/admin');
-    const url = buildLoginRedirectUrl(
-      req,
-      '/en/dashboard/admin',
-      locales,
-      'fr'
-    );
+    const req = new URL('https://example.com:4443/dashboard/admin');
+    const url = buildLoginRedirectUrl(req, '/dashboard/admin');
     expect(url.host).toBe('example.com:4443');
     expect(url.protocol).toBe('https:');
-    expect(url.pathname).toBe('/en/login');
+    expect(url.searchParams.get('returnTo')).toBe('/dashboard/admin');
   });
 });

@@ -1,6 +1,3 @@
-import createNextIntlPlugin from 'next-intl/plugin';
-import { varlockNextConfigPlugin } from '@varlock/nextjs-integration/plugin';
-
 const isProd = process.env.NODE_ENV === 'production';
 
 const securityHeaders = [
@@ -30,7 +27,4 @@ const nextConfig = {
   },
 };
 
-const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
-const withVarlock = varlockNextConfigPlugin();
-
-export default withVarlock(withNextIntl(nextConfig));
+export default nextConfig;

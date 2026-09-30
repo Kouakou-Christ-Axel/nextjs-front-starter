@@ -385,6 +385,5 @@ features/{kebab}/
 
 1. Remplir `I{Pascal}` avec les vrais champs du domaine
 2. Remplir `create{Pascal}Schema` avec les validations Zod
-3. Créer les composants dans `components/features/{kebab}/` si besoin
-4. Ajouter les traductions dans `i18n/messages/{en,fr}/{kebab}.json`
-5. Créer les pages dans `app/[locale]/...`
+3. Créer les composants dans `features/{kebab}/components/` si besoin
+4. Créer les pages dans `app/...`

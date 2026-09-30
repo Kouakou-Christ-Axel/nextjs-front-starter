@@ -48,7 +48,7 @@ describe('loginSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects invalid email format with emailInvalid key', () => {
+  it('rejects invalid email format', () => {
     const result = loginSchema.safeParse({
       email: 'not-an-email',
       password: '12345678',
@@ -56,12 +56,12 @@ describe('loginSchema', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(getMessagesForPath(result.error.issues, 'email')).toContain(
-        'emailInvalid'
+        'Adresse e-mail invalide'
       );
     }
   });
 
-  it('rejects passwords shorter than 8 with passwordMinLength key', () => {
+  it('rejects passwords shorter than 8', () => {
     const result = loginSchema.safeParse({
       email: 'a@b.co',
       password: 'short',
@@ -69,7 +69,7 @@ describe('loginSchema', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(getMessagesForPath(result.error.issues, 'password')).toContain(
-        'passwordMinLength'
+        'Le mot de passe doit contenir au moins 8 caractères'
       );
     }
   });
@@ -90,7 +90,6 @@ describe('registerSchema', () => {
   });
 
   it('requires password min 12', () => {
-    // 8 chars matches old min but should fail new min of 12
     const result = registerSchema.safeParse({
       ...validBase,
       password: 'Abcd123!',
@@ -99,12 +98,12 @@ describe('registerSchema', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(getMessagesForPath(result.error.issues, 'password')).toContain(
-        'passwordMinLength'
+        'Le mot de passe doit contenir au moins 12 caractères'
       );
     }
   });
 
-  it('requires uppercase in password with passwordUpper key', () => {
+  it('requires uppercase in password', () => {
     const result = registerSchema.safeParse({
       ...validBase,
       password: 'abcd1234xyz!',
@@ -113,12 +112,12 @@ describe('registerSchema', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(getMessagesForPath(result.error.issues, 'password')).toContain(
-        'passwordUpper'
+        'Ajoutez au moins une majuscule'
       );
     }
   });
 
-  it('requires lowercase in password with passwordLower key', () => {
+  it('requires lowercase in password', () => {
     const result = registerSchema.safeParse({
       ...validBase,
       password: 'ABCD1234XYZ!',
@@ -127,12 +126,12 @@ describe('registerSchema', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(getMessagesForPath(result.error.issues, 'password')).toContain(
-        'passwordLower'
+        'Ajoutez au moins une minuscule'
       );
     }
   });
 
-  it('requires digit in password with passwordDigit key', () => {
+  it('requires digit in password', () => {
     const result = registerSchema.safeParse({
       ...validBase,
       password: 'Abcdefghijkl',
@@ -141,7 +140,7 @@ describe('registerSchema', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(getMessagesForPath(result.error.issues, 'password')).toContain(
-        'passwordDigit'
+        'Ajoutez au moins un chiffre'
       );
     }
   });
@@ -181,7 +180,7 @@ describe('registerSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('rejects firstName with digits using firstNameInvalid key', () => {
+  it('rejects firstName with digits', () => {
     const result = registerSchema.safeParse({
       ...validBase,
       firstName: 'John123',
@@ -189,12 +188,12 @@ describe('registerSchema', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(getMessagesForPath(result.error.issues, 'firstName')).toContain(
-        'firstNameInvalid'
+        'Le prénom contient des caractères invalides'
       );
     }
   });
 
-  it('rejects lastName with symbols using lastNameInvalid key', () => {
+  it('rejects lastName with symbols', () => {
     const result = registerSchema.safeParse({
       ...validBase,
       lastName: 'Doe@!',
@@ -202,12 +201,12 @@ describe('registerSchema', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(getMessagesForPath(result.error.issues, 'lastName')).toContain(
-        'lastNameInvalid'
+        'Le nom contient des caractères invalides'
       );
     }
   });
 
-  it('rejects firstName shorter than 2 with firstNameMinLength key', () => {
+  it('rejects firstName shorter than 2', () => {
     const result = registerSchema.safeParse({
       ...validBase,
       firstName: 'A',
@@ -215,12 +214,12 @@ describe('registerSchema', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(getMessagesForPath(result.error.issues, 'firstName')).toContain(
-        'firstNameMinLength'
+        'Le prénom doit contenir au moins 2 caractères'
       );
     }
   });
 
-  it('rejects lastName shorter than 2 with lastNameMinLength key', () => {
+  it('rejects lastName shorter than 2', () => {
     const result = registerSchema.safeParse({
       ...validBase,
       lastName: 'D',
@@ -228,7 +227,7 @@ describe('registerSchema', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(getMessagesForPath(result.error.issues, 'lastName')).toContain(
-        'lastNameMinLength'
+        'Le nom doit contenir au moins 2 caractères'
       );
     }
   });
@@ -243,7 +242,7 @@ describe('registerSchema', () => {
     if (!result.success) {
       expect(
         getMessagesForPath(result.error.issues, 'confirmPassword')
-      ).toContain('passwordMismatch');
+      ).toContain('Les mots de passe ne correspondent pas');
     }
   });
 
