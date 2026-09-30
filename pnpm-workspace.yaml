@@ -7,7 +7,7 @@ packages:
 # l'accès typé `env`/`ENV` côté serveur ET client (Webpack comme Turbopack).
 # https://varlock.dev/integrations/nextjs/
 overrides:
-  '@next/env': 'npm:@varlock/nextjs-integration@^1.1.3'
+  '@next/env': 'npm:@varlock/nextjs-integration@^1.2.3'
 
 onlyBuiltDependencies:
   - '@parcel/watcher'
